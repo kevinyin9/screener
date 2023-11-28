@@ -11,6 +11,8 @@ CURRENT_TIMEZONE = "America/Los_Angeles"
 
 def calc_total_bars(time_interval, days):
     bars_dict = {
+        "1m": 60 * 24 * days,
+        "3m": 20 * 24 * days,
         "5m": 12 * 24 * days,
         "15m": 4 * 24 * days,
         "30m": 2 * 24 * days,
@@ -36,6 +38,7 @@ def test_strategy(symbol: str, time_interval: str, days: int):
         return {"crypto": symbol, "rs_score": 0}
 
     bars = calc_total_bars(time_interval, days)
+    print(bars)
     if bars > 1500 - 60:
         raise ValueError(f"Requesting too many bars. Limitation: 1440 bars. Your are requesting {bars} bars. Please decrease total days.")
     if len(crypto_data) < bars + 60:
