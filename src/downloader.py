@@ -356,8 +356,10 @@ class CryptoDownloader(BaseDownloader):
         for future in as_completed(futures):
             symbol, status, resp = future.result()
             if status == 0:
+                print("fail")
                 fail.append((symbol, resp))
             else:
+                print("success")
                 success.append((symbol, resp))
         executor.shutdown()
 
