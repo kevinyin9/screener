@@ -12,7 +12,7 @@ def ping(message):
 def rs(message):
     try:
         rs = message.text.split()[1:]
-        print(rs)
+        print(*rs)
         result = main(*rs)
         print("wtf")
         print(result)
