@@ -342,7 +342,8 @@ class CryptoDownloader(BaseDownloader):
             return self.get_crypto(s, start_d)
 
         # Get all the symbols and submit jobs to executor pool
-        all_symbols = self.get_all_symbols()
+        all_symbols = self.get_volume_rank()
+        # all_symbols = self.get_all_symbols()
         executor = ThreadPoolExecutor(max_workers=os.cpu_count()*2)
         futures = []
         for symbol in all_symbols:
