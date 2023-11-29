@@ -295,6 +295,7 @@ class CryptoDownloader(BaseDownloader):
         binance_response = self.binance_client.futures_ticker()
         extracted_data = [(item["symbol"], float(item["quoteVolume"])) for item in binance_response]
         sorted_data = sorted(extracted_data, key=lambda x: x[1], reverse=True)
+        sorted_data = [x[0] for x in sorted_data] # only get symbol
         return sorted_data[:150] # 150/269
 
     def get_all_symbols(self):
