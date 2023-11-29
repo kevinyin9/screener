@@ -55,15 +55,7 @@ def test_strategy(symbol: str, time_interval: str, days: int):
 
     return {"crypto": symbol, "rs_score": rs_score}
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-t', '--timeframe', type=str, help='Time frame (3m, 5m, 15m, 30m, 1h, 2h, 4h)', default="15m")
-    parser.add_argument('-d', '--total_days', type=int, help='Calculation duration in days (default 7 days)', default=7)
-    args = parser.parse_args()
-    timeframe = args.timeframe
-    total_days = args.total_days
-
+def main(timeframe, total_days):
     crypto_downloader = CryptoDownloader()
     crypto_downloader.check_crypto_table()
     all_cryptos = crypto_downloader.get_all_symbols()
@@ -84,14 +76,27 @@ if __name__ == '__main__':
     # Show results
     print("Failed targets: %s" % ", ".join(failed_targets))
     print("\n=========================== Target : Score (TOP 20) ===========================")
+    result = ""
     for crypto in targets[:20]:
         score = target_score[crypto]
+        result += f"{crypto}: {score}\n"
         print(f"{crypto}: {score}")
     print("===============================================================================")
     # Write to txt file
-    txt_content = "###BTCETH\nBINANCE:BTCUSDT.P,BINANCE:ETHUSDT\n###Targets (Sort by score)\n"
-    for crypto in targets:
-        txt_content += f",BINANCE:{crypto}.P"
-    date_str = datetime.now().strftime("%Y-%m-%d %H%M")
-    with open(f"{date_str}_crypto_relative_strength_{timeframe}.txt", "w") as f:
-        f.write(txt_content)
+    # txt_content = "###BTCETH\nBINANCE:BTCUSDT.P,BINANCE:ETHUSDT\n###Targets (Sort by score)\n"
+    # for crypto in targets:
+    #     txt_content += f",BINANCE:{crypto}.P"
+    # date_str = datetime.now().strftime("%Y-%m-%d %H%M")
+    # with open(f"{date_str}_crypto_relative_strength_{timeframe}.txt", "w") as f:
+    #     f.write(txt_content)
+    return result
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-t', '--timeframe', type=str, help='Time frame (3m, 5m, 15m, 30m, 1h, 2h, 4h)', default="15m")
+    parser.add_argument('-d', '--total_days', type=int, help='Calculation duration in days (default 7 days)', default=7)
+    args = parser.parse_args()
+    timeframe = args.timeframe
+    total_days = args.total_days
+    main(timeframe, total_days)
+    
