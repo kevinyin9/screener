@@ -58,7 +58,9 @@ def test_strategy(symbol: str, time_interval: str, days: int):
 def main(timeframe, total_days):
     crypto_downloader = CryptoDownloader()
     crypto_downloader.check_crypto_table()
-    all_cryptos = crypto_downloader.get_all_symbols()
+    print(crypto_downloader.get_volume_rank())
+    raise
+    # all_cryptos = crypto_downloader.get_all_symbols()
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         future_tasks = [executor.submit(test_strategy, crypto, timeframe, total_days) for crypto in all_cryptos]

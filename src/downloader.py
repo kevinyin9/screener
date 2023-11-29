@@ -291,6 +291,12 @@ class CryptoDownloader(BaseDownloader):
         super().__init__(api_keys, save_dir, db_name)
         self.binance_client = Client(requests_params={"timeout": 300})
 
+    def get_volume_rank(self):
+        binance_response = self.binance_client.futures_ticker()
+        extracted_data = [(item["symbol"], float(item["volume"])) for item in binance_response]
+        sorted_data = sorted(extracted_data, key=lambda x: x[1], reverse=True)
+        return sorted_data[:100]
+
     def get_all_symbols(self):
         """
         Get all USDT pairs in binance
