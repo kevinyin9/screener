@@ -38,7 +38,6 @@ def test_strategy(symbol: str, time_interval: str, days: int):
         return {"crypto": symbol, "rs_score": 0}
 
     bars = calc_total_bars(time_interval, days)
-    print(bars)
     if bars > 1500 - 60:
         raise ValueError(f"Requesting too many bars. Limitation: 1440 bars. Your are requesting {bars} bars. Please decrease total days.")
     if len(crypto_data) < bars + 60:
