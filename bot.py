@@ -14,6 +14,8 @@ def rs(message):
         rs = message.text.split()[1:]
         print(rs)
         result = main(*rs)
+        print("wtf")
+        print(result)
         bot.reply_to(message, result)
     except:
         pass
