@@ -293,10 +293,9 @@ class CryptoDownloader(BaseDownloader):
 
     def get_volume_rank(self):
         binance_response = self.binance_client.futures_ticker()
-        print(len(binance_response))
         extracted_data = [(item["symbol"], float(item["quoteVolume"])) for item in binance_response]
         sorted_data = sorted(extracted_data, key=lambda x: x[1], reverse=True)
-        return sorted_data[:100]
+        return sorted_data[:150] # 150/269
 
     def get_all_symbols(self):
         """
