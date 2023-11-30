@@ -9,7 +9,7 @@ import yfinance as yf
 import requests
 import pytz
 from pathlib import Path
-from stocksymbol import StockSymbol
+# from stocksymbol import StockSymbol
 from datetime import datetime, timedelta
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -100,10 +100,10 @@ class StockDownloader(BaseDownloader):
             tradingview_symbol_only_list = None
             if os.path.exists(self.save_dir / tradingview_csv):
                 tradingview_symbol_only_list = read_tradingview_csv(self.save_dir / tradingview_csv, csv_column_name)
-            api_key = self.api_keys["stocksymbol"]
-            ss = StockSymbol(api_key)
+            # api_key = self.api_keys["stocksymbol"]
+            # ss = StockSymbol(api_key)
             # First we download all ticker in US market
-            symbol_only_list = ss.get_symbol_list(market="US", symbols_only=True)
+            # symbol_only_list = ss.get_symbol_list(market="US", symbols_only=True)
             # The first 2 rows are for discarding any tickers that is not stock
             symbol_only_list = [x for x in symbol_only_list if "." not in x]
             symbol_only_list = [i for i in symbol_only_list if len(i) <= 4]
