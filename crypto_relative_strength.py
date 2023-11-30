@@ -67,7 +67,7 @@ def main(timeframe, total_days):
     failed_targets = []     # Failed to download data or error happened
     target_score = {}
     for result in results:
-        print(result)
+        # print(result)
         if result["rs_score"] != 0:
             target_score[result["crypto"]] = result["rs_score"]
         else:
