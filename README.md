@@ -19,11 +19,21 @@ API keys are needed for [Tiingo](https://tiingo.com/) and [Stocksymbol](https://
 Identify strong performing assets by comparing them with SMA-30, SMA-45 and SMA-60 (Default time frame = 15m, total days = 7)
 
 ```bash
-python3 crypto_relative_strength.py  
-python3 crypto_relative_strength.py -t "1h" -d 60
+python3 crypto_relative_strength.py
 ```
-* `-t` Time frame (3m, 5m, 15m, 30m, 1h, 2h, 4h)
-* `-d` Calculation duration in days (max: 1440 bars), e.g. 1440 / (24 bars per day in 1h) = 60
+
+Set the config.ini file to your own preference.
+
+```ini
+timeframe = 1h          # 3m, 5m, 15m, 30m, 1h, 2h, 4h
+total_days = 1          # Calculation duration in days (max: 1440 bars), e.g. 1440 / (24 bars per day in 1h) = 60
+no_download = True      # Whether to download data or use existing local data
+history = True          # Whether to calculate relative strength for specific past date
+start_date = 2024-02-03 # Must set the date if history is True
+end_date = 2024-02-07   # Must set the date if history is True
+exclude_symbols = LSKUSDT,JUPUSDT,ZETAUSDT,ALTUSDT,RONINUSDT,DYMUSDT
+```
+
 * Change CURRENT_TIMEZONE in the file if timezone is essential to you.[[Refer](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)]
 
 2. US stock trend template

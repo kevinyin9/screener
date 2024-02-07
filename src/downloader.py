@@ -362,18 +362,32 @@ class CryptoDownloader(BaseDownloader):
                 for item in fail:
                     f.write(f"{item[0]} failed -> {item[1]}\n")
 
-    def get_crypto(self, crypto, time_interval="15m", timezone="America/Los_Angeles"):
+    def get_crypto(self, crypto, time_interval="15m", timezone="America/Los_Angeles", no_download=False):
         status = 0  # 0 - fail, 1 - data from database
         try:
-            binance_df = self.request_binance(crypto, time_interval, timezone)
-            binance_df.set_index('Datetime', inplace=True)
+            if no_download:
+                binance_df = pd.read_csv(f"/Users/kevinyin/Documents/alphaportfolio/data/UPERP/{time_interval}/{crypto}_UPERP_{time_interval}.csv", index_col=0)
+                binance_df.index.name = 'Datetime'
+                binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')
+                binance_df.rename(columns={"close": "Close Price",
+                                           "high": "High Price",
+                                           "low": "Low Price",
+                                           "open": "Open Price",
+                                           'volume': 'Abs Volume'
+                                           }, inplace=True)
+                # print(binance_df)
+            else:
+                binance_df = self.request_binance(crypto, time_interval, timezone)
+                time.sleep(1)
+                binance_df.set_index('Datetime', inplace=True)
+            
             binance_df = binance_df[~binance_df.index.duplicated(keep='first')]
             response = binance_df
             response.reset_index(inplace=True)
             for duration in CRYPTO_SMA:
                 response["SMA_" + str(duration)] = round(response.loc[:, "Close Price"].rolling(window=duration).mean(), 20)
             status = 1
-            print(f"{crypto} -> Get data from binance successfully ({response.iloc[0]['Datetime']} to {response.iloc[-1]['Datetime']})")
+            # print(f"{crypto} -> Get data successfully ({response.iloc[0]['Datetime']} to {response.iloc[-1]['Datetime']})")
         except Exception as e:
             print(f"{crypto} -> Error: {e}")
             response = str(e)
@@ -433,3 +447,8 @@ class CryptoDownloader(BaseDownloader):
             local_timezone = pytz.timezone(timezone)
             df['Datetime'] = pd.to_datetime(df.Datetime, utc=True).dt.tz_convert(local_timezone).dt.strftime(DB_STRFTIME_FORMAT)
         return df
+
+class TWSEDownloader(BaseDownloader):
+    def __init__(self, api_keys: dict = None, save_dir: str = ".", db_name="screen.db"):
+        super().__init__(api_keys, save_dir, db_name)
+        self.binance_client = Client(requests_params={"timeout": 300})
