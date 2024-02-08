@@ -135,7 +135,13 @@ if __name__ == '__main__':
 
     crypto_downloader = CryptoDownloader()
     crypto_downloader.check_crypto_table()
-    all_cryptos = crypto_downloader.get_all_symbols()
+    # all_cryptos = crypto_downloader.get_all_symbols()
+    all_cryptos = crypto_downloader.get_volume_rank()
+    
+    # remove specfic symbols in all_cryptos
+    if ini["Base"]["exclude_symbols"]:
+        exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
+        all_cryptos = [x for x in all_cryptos if x not in exclude_symbols]
 
     # remove specfic symbols in all_cryptos
     if ini["Base"]["exclude_symbols"]:

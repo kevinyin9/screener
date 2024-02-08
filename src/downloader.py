@@ -9,7 +9,7 @@ import yfinance as yf
 import requests
 import pytz
 from pathlib import Path
-from stocksymbol import StockSymbol
+# from stocksymbol import StockSymbol
 from datetime import datetime, timedelta
 from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -100,10 +100,10 @@ class StockDownloader(BaseDownloader):
             tradingview_symbol_only_list = None
             if os.path.exists(self.save_dir / tradingview_csv):
                 tradingview_symbol_only_list = read_tradingview_csv(self.save_dir / tradingview_csv, csv_column_name)
-            api_key = self.api_keys["stocksymbol"]
-            ss = StockSymbol(api_key)
+            # api_key = self.api_keys["stocksymbol"]
+            # ss = StockSymbol(api_key)
             # First we download all ticker in US market
-            symbol_only_list = ss.get_symbol_list(market="US", symbols_only=True)
+            # symbol_only_list = ss.get_symbol_list(market="US", symbols_only=True)
             # The first 2 rows are for discarding any tickers that is not stock
             symbol_only_list = [x for x in symbol_only_list if "." not in x]
             symbol_only_list = [i for i in symbol_only_list if len(i) <= 4]
@@ -291,6 +291,13 @@ class CryptoDownloader(BaseDownloader):
         super().__init__(api_keys, save_dir, db_name)
         self.binance_client = Client(requests_params={"timeout": 300})
 
+    def get_volume_rank(self):
+        binance_response = self.binance_client.futures_ticker()
+        extracted_data = [(item["symbol"], float(item["quoteVolume"])) for item in binance_response]
+        sorted_data = sorted(extracted_data, key=lambda x: x[1], reverse=True)
+        sorted_data = [x[0] for x in sorted_data] # only get symbol
+        return sorted_data[:150] # 150/269
+
     def get_all_symbols(self):
         """
         Get all USDT pairs in binance
@@ -335,7 +342,8 @@ class CryptoDownloader(BaseDownloader):
             return self.get_crypto(s, start_d)
 
         # Get all the symbols and submit jobs to executor pool
-        all_symbols = self.get_all_symbols()
+        all_symbols = self.get_volume_rank()
+        # all_symbols = self.get_all_symbols()
         executor = ThreadPoolExecutor(max_workers=os.cpu_count()*2)
         futures = []
         for symbol in all_symbols:
@@ -348,8 +356,10 @@ class CryptoDownloader(BaseDownloader):
         for future in as_completed(futures):
             symbol, status, resp = future.result()
             if status == 0:
+                print("fail")
                 fail.append((symbol, resp))
             else:
+                print("success")
                 success.append((symbol, resp))
         executor.shutdown()
 
