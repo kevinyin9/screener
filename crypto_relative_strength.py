@@ -125,8 +125,8 @@ if __name__ == '__main__':
 
     timeframe = ini["Base"]["timeframe"]      # Time frame: 3m, 5m, 15m, 30m, 1h, 2h, 4h
     total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
-    no_download = ini["Base"]["no_download"]
-    history = ini["Base"]["history"]
+    no_download = ini["Base"].getboolean("no_download")
+    history = ini["Base"].getboolean("history")
     start_date = ini["Base"]["start_date"]
     end_date = ini["Base"]["end_date"]
     

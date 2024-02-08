@@ -15,6 +15,7 @@ from requests.adapters import HTTPAdapter, Retry
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from binance import Client
 
+from src.binance_loader import BinanceLoader
 from src.utils import read_tokens, read_tradingview_csv, get_closest_market_datetime, check_timezone_to_ny, connect_db
 
 
@@ -375,21 +376,25 @@ class CryptoDownloader(BaseDownloader):
     def get_crypto(self, crypto, time_interval="15m", timezone="America/Los_Angeles", no_download=False):
         status = 0  # 0 - fail, 1 - data from database
         try:
-            if no_download:
-                binance_df = pd.read_csv(f"/Users/kevinyin/Documents/alphaportfolio/data/UPERP/{time_interval}/{crypto}_UPERP_{time_interval}.csv", index_col=0)
-                binance_df.index.name = 'Datetime'
-                binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')
-                binance_df.rename(columns={"close": "Close Price",
-                                           "high": "High Price",
-                                           "low": "Low Price",
-                                           "open": "Open Price",
-                                           'volume': 'Abs Volume'
-                                           }, inplace=True)
+            if no_download == False:
+                print("here")
+                binance_loader = BinanceLoader()
+                binance_loader.download(time_interval, "UPERP", [crypto])
+                
+            binance_df = pd.read_csv(f"./data/UPERP/{time_interval}/{crypto}_UPERP_{time_interval}.csv", index_col=0)
+            binance_df.index.name = 'Datetime'
+            binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')
+            binance_df.rename(columns={"close": "Close Price",
+                                        "high": "High Price",
+                                        "low": "Low Price",
+                                        "open": "Open Price",
+                                        'volume': 'Abs Volume'
+                                        }, inplace=True)
                 # print(binance_df)
-            else:
-                binance_df = self.request_binance(crypto, time_interval, timezone)
-                time.sleep(1)
-                binance_df.set_index('Datetime', inplace=True)
+            # else:
+                # binance_df = self.request_binance(crypto, time_interval, timezone)
+                # time.sleep(1)
+                # binance_df.set_index('Datetime', inplace=True)
             
             binance_df = binance_df[~binance_df.index.duplicated(keep='first')]
             response = binance_df
