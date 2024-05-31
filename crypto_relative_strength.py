@@ -187,7 +187,7 @@ if __name__ == '__main__':
             i += 1
         df = pd.DataFrame(df_list)
         df.to_csv('abc1.csv')
-        raise
+        # raise
         print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
         all_data = []
         while current_date <= end_date:
@@ -206,7 +206,6 @@ if __name__ == '__main__':
             current_date += timedelta(days=1)
         
         df = pd.DataFrame(all_data)
-        df.index = df['date']
         df.to_csv('abc.csv')
     else:
         for result in results:
