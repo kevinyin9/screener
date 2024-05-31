@@ -33,7 +33,6 @@ class CsvDealer:
                 for row in reader:
                     if row:  # avoid blank lines
                         last_row = row
-                print("last_row: ", last_row[0])
                 if last_row[0] == 'datetime': # It means this pair has no any data.
                     return None
                 return (

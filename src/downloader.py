@@ -377,7 +377,6 @@ class CryptoDownloader(BaseDownloader):
         status = 0  # 0 - fail, 1 - data from database
         try:
             if no_download == False:
-                print("here")
                 binance_loader = BinanceLoader()
                 binance_loader.download(time_interval, "UPERP", [crypto])
                 

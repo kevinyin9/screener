@@ -1,8 +1,6 @@
-import math
 import os
 
 import numpy as np
-import pandas as pd
 import config
 from datetime import datetime
 import argparse
@@ -99,8 +97,8 @@ def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str,
         return {"crypto": symbol, "rs_score": 0}
 
     day_bars = calc_day_bars(time_interval)
+    rs_score_list = {}
 
-    rs_score_list = []
     current_date = start_date
     while current_date <= end_date:
         current_date_dt64 = np.datetime64(current_date.date())
@@ -114,15 +112,12 @@ def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str,
             moving_average_30 = df_tmp['SMA_30'].values[-i]
             moving_average_45 = df_tmp['SMA_45'].values[-i]
             moving_average_60 = df_tmp['SMA_60'].values[-i]
-            if np.isnan(moving_average_30) or np.isnan(moving_average_45) or np.isnan(moving_average_60):
-                print(f"{symbol} nan fk")
-                rs_score = 0
-                break
             weight = (((current_close - moving_average_30) + (current_close - moving_average_45) + (current_close - moving_average_60)) * (((bars - i) * days / bars) + 1) + (moving_average_30 - moving_average_45) + (moving_average_30 - moving_average_60) + (moving_average_45 - moving_average_60)) / moving_average_60
-            # if symbol == 'ARUSDT':
-                # print(weight, current_close, moving_average_30, moving_average_45, moving_average_60)
             rs_score += weight * (bars - i)
-        rs_score_list.append(rs_score)
+        if current_date in rs_score_list:
+            rs_score_list[current_date].append(rs_score)
+        else:
+            rs_score_list[current_date] = [rs_score]
         current_date += timedelta(days=1)
 
     return {"crypto": symbol, "rs_score_list": rs_score_list}
@@ -131,103 +126,86 @@ if __name__ == '__main__':
     ini = config.Config()
     ini.read('{0}/ini/config.ini'.format(os.getcwd()))
 
-    timeframe = ini["Base"]["timeframe"]      # Time frame: 3m, 5m, 15m, 30m, 1h, 2h, 4h
-    total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
-    no_download = ini["Base"].getboolean("no_download")
-    history = ini["Base"].getboolean("history")
-    start_date = ini["Base"]["start_date"]
-    end_date = ini["Base"]["end_date"]
-    
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    for timeframe in ["4h"]:
+        total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
+        no_download = ini["Base"].getboolean("no_download")
+        history = ini["Base"].getboolean("history")
+        start_date = ini["Base"]["start_date"]
+        end_date = ini["Base"]["end_date"]
+        
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
-    crypto_downloader = CryptoDownloader()
-    crypto_downloader.check_crypto_table()
-    # all_cryptos = crypto_downloader.get_all_symbols()
-    all_cryptos = crypto_downloader.get_volume_rank()
-    
-    # remove specfic symbols in all_cryptos
-    if ini["Base"]["exclude_symbols"]:
-        exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
-        all_cryptos = [x for x in all_cryptos if x not in exclude_symbols and x.find('USDT') != -1]
+        crypto_downloader = CryptoDownloader()
+        crypto_downloader.check_crypto_table()
+        # all_cryptos = crypto_downloader.get_all_symbols()
+        all_cryptos = crypto_downloader.get_volume_rank()
+        
+        # remove specfic symbols in all_cryptos
+        if ini["Base"]["exclude_symbols"]:
+            exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
+            all_cryptos = [x for x in all_cryptos if x not in exclude_symbols]
+            all_cryptos = [x for x in all_cryptos if 'USDT' in x]
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            if history:
+                future_tasks = [executor.submit(calc_history_rs, crypto, timeframe, total_days, start_date, end_date, no_download) for crypto in all_cryptos]
+            else:
+                future_tasks = [executor.submit(calc_current_rs, crypto, timeframe, total_days, no_download) for crypto in all_cryptos]
+            results = [future.result() for future in as_completed(future_tasks)]
+
+        failed_targets = []     # Failed to download data or error happened
+        target_score = {}
+        # print(results)
         if history:
-            future_tasks = [executor.submit(calc_history_rs, crypto, timeframe, total_days, start_date, end_date, no_download) for crypto in all_cryptos]
+            for result in results:
+                if "rs_score_list" in result and result["rs_score_list"] != []:
+                    target_score[result["crypto"]] = result["rs_score_list"]
+                else:
+                    failed_targets.append(result["crypto"])
+            target_list = {}
+            number_of_target = 15
+            current_date = start_date
+            while current_date <= end_date:
+                symbols = [x for x in target_score.keys()]
+                symbols.sort(key=lambda x: target_score[x][current_date], reverse=True)
+                if current_date in target_list:
+                    target_list[current_date].append(symbols)
+                else:
+                    target_list[current_date] = [symbols]
+                current_date += timedelta(days=1)
+
+            print("Failed targets: %s" % ", ".join(failed_targets))
+
+            print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
+            for date, target in target_list.items():
+                print(date)
+                for crypto in symbols[:number_of_target]:
+                    score = target_score[crypto][date]
+                    print(f"{crypto}: {score}")
+                print("===============================================================================")
         else:
-            future_tasks = [executor.submit(calc_current_rs, crypto, timeframe, total_days, no_download) for crypto in all_cryptos]
-        results = [future.result() for future in as_completed(future_tasks)]
-
-    failed_targets = []     # Failed to download data or error happened
-    target_score = {}
-    # print(results)
-    if history:
-        for result in results:
-            if "rs_score_list" in result and result["rs_score_list"] != []:
-                target_score[result["crypto"]] = result["rs_score_list"]
-            else:
-                failed_targets.append(result["crypto"])
-        
-        number_of_target = 15
-        current_date = start_date
-        
-        df_list = []
-        i = 0
-        while current_date <= end_date:
-            row = {}
-            row['date'] = current_date
-            current_date += timedelta(days=1)
-
-            values = {symbol: target_score[symbol][i] for symbol in target_score}
-            sorted_values = {k: v for k, v in sorted(values.items(), key=lambda item: item[1])}
-            print(current_date, sorted_values)
-            for idx, v in enumerate(sorted_values.keys()):
-                row[idx] = str(v) + '_' + str(sorted_values[v])
-            df_list.append(row)
-            i += 1
-        df = pd.DataFrame(df_list)
-        df.to_csv('abc1.csv')
-        raise
-        print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
-        all_data = []
-        while current_date <= end_date:
-            row = {}
-            print([x for x in target_score.keys()])
-            symbols = [x for x in target_score.keys() if not math.isnan(target_score[x][current_date])]
-            symbols.sort(key=lambda x: target_score[x][current_date], reverse=True)
-            print(current_date)
-            row['date'] = current_date
-            for idx, crypto in enumerate(symbols[:number_of_target]):
-                score = target_score[crypto][current_date]
-                print(f"{crypto}: {score}")
-                row[idx] = crypto
+            for result in results:
+                if "rs_score" in result:
+                    target_score[result["crypto"]] = result["rs_score"]
+                else:
+                    failed_targets.append(result["crypto"])
+            print(target_score)
+            number_of_target = 15
+            symbols = [x for x in target_score.keys()]
+            symbols.sort(key=lambda x: target_score[x], reverse=True)
+            print("Failed targets: %s" % ", ".join(failed_targets))
+            print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
+            msg = f"{timeframe}\n"
+            for crypto in symbols[:number_of_target]:
+                score = target_score[crypto]
+                crypto = crypto[:crypto.find('USDT')] # remove USDT
+                print(f"{crypto}: {round(score)}")
+                
+                msg += '{:<10} {:<6}\n'.format(crypto, round(score))
             print("===============================================================================")
-            all_data.append(row)
-            current_date += timedelta(days=1)
-        
-        df = pd.DataFrame(all_data)
-        df.index = df['date']
-        df.to_csv('abc.csv')
-    else:
-        for result in results:
-            if "rs_score" in result:
-                target_score[result["crypto"]] = result["rs_score"]
-            else:
-                failed_targets.append(result["crypto"])
-        print(target_score)
-        number_of_target = 15
-        symbols = [x for x in target_score.keys()]
-        symbols.sort(key=lambda x: target_score[x], reverse=True)
-        print("Failed targets: %s" % ", ".join(failed_targets))
-        print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
-        msg = ""
-        for crypto in symbols[:number_of_target]:
-            score = target_score[crypto]
-            print(f"{crypto}: {round(score, 2)}")
-            msg += f"{crypto}: {round(score, 2)}"
-        print("===============================================================================")
 
-        bot.send_message(CHAT_ID, msg)
+            bot.send_message(CHAT_ID, msg)
     # Write to txt file
     # txt_content = "###BTCETH\nBINANCE:BTCUSDT.P,BINANCE:ETHUSDT\n###Targets (Sort by score)\n"
     # for crypto in symbols:

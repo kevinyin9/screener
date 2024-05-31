@@ -52,9 +52,9 @@ def paginate(
             patch = client.fetch_ohlcv(symbol, timeframe, since)
             data += patch
             if patch:
-                print(
-                    f"[{symbol}] Fetched data from - {patch[0][0]} - {timestampt_to_datetime(patch[0][0])} to {timestampt_to_datetime(patch[-1][0])}"
-                )
+                # print(
+                #     f"[{symbol}] Fetched data from - {patch[0][0]} - {timestampt_to_datetime(patch[0][0])} to {timestampt_to_datetime(patch[-1][0])}"
+                # )
                 # update next patch to have since = last ts of patch + 1 millisec to avoid duplication of data
                 since = int(patch[-1][0]) + 1
                 if timestampt_to_datetime(since) > to_dt - timedelta(hours=1):
@@ -67,21 +67,21 @@ def paginate(
                 else:
                     since += 60000 * 1000
                     # since += 2592000000  # 1 month
-                print(
-                    f"[{symbol}] Trying later start dt - {timestampt_to_datetime(since)}"
-                )
+                # print(
+                #     f"[{symbol}] Trying later start dt - {timestampt_to_datetime(since)}"
+                # )
                 if timestampt_to_datetime(since) > datetime.utcnow():
                     break
         except ExchangeError as e:
             print(f"[{symbol}] Getting error {e}")
             break
 
-    print(f"Acquired # of timepoints: {len(data)}")
+    # print(f"Acquired # of timepoints: {len(data)}")
     if len(data) == 0:
         return
 
-    print(f"First data point: {data[0]}")
-    print(f"Last data point: {data[-1]}")
+    # print(f"First data point: {data[0]}")
+    # print(f"Last data point: {data[-1]}")
 
     # last bar is incomplete
     data = data[:-1]

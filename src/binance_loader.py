@@ -67,7 +67,7 @@ class BinanceLoader:
                     int(i["info"]["onboardDate"]) / 1000 - 1000
                 )
                 start_dt = symbol_onboard_date if symbol_onboard_date > SINCE else SINCE
-                print(f"Getting data: {start_dt}, {symbol_}, {timeframe}")
+                # print(f"Getting data: {start_dt}, {symbol_}, {timeframe}")
                 paginate(client, symbol_, timeframe, data_path, pair_type, start_dt, TO)
 
         else:
@@ -82,9 +82,9 @@ class BinanceLoader:
                     int(symbol_details[0]["info"]["onboardDate"]) / 1000 - 1000
                 )
                 start_dt = symbol_onboard_date if symbol_onboard_date > SINCE else SINCE
-                print(f"Getting data: {start_dt}, {symbol}, {timeframe}")
+                # print(f"Getting data: {start_dt}, {symbol}, {timeframe}")
                 paginate(client, symbol, timeframe, data_path, pair_type, start_dt, TO)
-        print("Saved data.")
+        # print("Saved data.")
 
     def uperp_data_import(self, timeframe, training_pair_list=None):
         df_list = []
