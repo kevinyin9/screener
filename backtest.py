@@ -36,7 +36,7 @@ def run_backtest(symbol, dates):
     # df = short_atr_tp(df)
     # df = short_bband_tp(df)
     # df = long_bband_tp(df) # 40.48%, 2.8
-    df = long_atr_tp(df) # 42.86%, 6.3
+    df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
 
     # 计算每日回报
     df['daily_return'] = df['close'].pct_change()
