@@ -9,11 +9,12 @@
 # another
 # - -> +
 
-import numpy as np
 import pandas as pd
-import talib
 import matplotlib.pyplot as plt
 import os.path
+
+from strategy_long import long_atr_tp, long_bband_tp
+from strategy_short import short_atr_tp, short_bband_tp
 
 def run_backtest(symbol, dates):
     if symbol == '1INCHUSDT' or symbol == 'GMXUSDT' or symbol == 'USTCUSDT':
@@ -32,43 +33,10 @@ def run_backtest(symbol, dates):
     df.reset_index(drop=True, inplace=True)
     # print(symbol, df.to_string())
 
-    # 计算布林带
-    df['upper_band'], df['middle_band'], df['lower_band'] = talib.BBANDS(df['close'], timeperiod=20)
-
-    # 计算ATR
-    df['ATR'] = talib.ATR(df['high'], df['low'], df['close'], timeperiod=14)
-
-    # 初始化信号和仓位
-    df['signal'] = 0
-    df['position'] = 0
-    df['take_profit'] = np.nan
-    df['stop_loss'] = np.nan
-
-    # 生成交易信号和止损条件
-    for i in range(1, len(df)):
-        if df['close'].iloc[i] > df['upper_band'].iloc[i] and df.at[df.index[i], 'can_entry'] == 1 and df['position'].iloc[i-1] == 0:
-            df.at[df.index[i], 'signal'] = -1  # 開空頭倉位
-            df.at[df.index[i], 'take_profit'] = df['close'].iloc[i] - 2 * df['ATR'].iloc[i]  # 設置止盈價格
-            df.at[df.index[i], 'stop_loss'] = df['close'].iloc[i] + df['ATR'].iloc[i]  # 設置止损價格
-        elif df['position'].iloc[i-1] == -1 and df['close'].iloc[i] < df['lower_band'].iloc[i]:
-            df.at[df.index[i], 'signal'] = 1  # 平仓
-        else:
-            df.at[df.index[i], 'take_profit'] = df['take_profit'].iloc[i-1]
-            df.at[df.index[i], 'stop_loss'] = df['stop_loss'].iloc[i-1]
-
-        # 止盈
-        if df['position'].iloc[i-1] == -1 and df['low'].iloc[i] < df['take_profit'].iloc[i-1]:
-            df.at[df.index[i], 'signal'] = 1  # 平仓
-
-        # 止損
-        if df['position'].iloc[i-1] == -1 and df['high'].iloc[i] > df['stop_loss'].iloc[i-1]:
-            df.at[df.index[i], 'signal'] = 1  # 平仓
-
-        # 更新倉位
-        if df['position'].iloc[i-1] == -1 and df['signal'].iloc[i] == -1:
-            df.at[df.index[i], 'position'] = df['position'].iloc[i-1]
-        else:
-            df.at[df.index[i], 'position'] = df['position'].iloc[i-1] + df['signal'].iloc[i]
+    # df = short_atr_tp(df)
+    # df = short_bband_tp(df)
+    # df = long_bband_tp(df) # 40.48%, 2.8
+    df = long_atr_tp(df) # 42.86%, 6.3
 
     # 计算每日回报
     df['daily_return'] = df['close'].pct_change()
@@ -108,9 +76,11 @@ def get_top_n(n):
 
     top_n_dict = {}
 
+    len_col = len(df.columns)
     for _, row in df.iterrows():
         date = row['date']
-        for column in df.columns[1:n+2]: # get top-n
+        # for column in df.columns[1:n+2]: # get weakest top-n
+        for column in df.columns[len_col - n:len_col]: # get strongest top-n
             cell = row[column]
             symbol, rs_value = extract_symbol_quantity(cell)
             if symbol not in top_n_dict:
@@ -122,6 +92,19 @@ if __name__ == '__main__':
     n = 5
     top_n_dict = get_top_n(n)
     total_profit = 0
+    total_win_money = 0
+    total_loss_money = 0
+    win_times = 0
+    loss_times = 0
     for symbol, dates in top_n_dict.items():
-        total_profit += run_backtest(symbol, dates)
-        print(f'{total_profit:.2%}')
+        profit = run_backtest(symbol, dates)
+        if profit > 0:
+            total_win_money += profit
+            win_times += 1
+        else:
+            total_loss_money += profit
+            loss_times += 1
+        total_profit += profit
+        print(f'{symbol} {profit:.2%} {total_profit:.2%}')
+    print(f"Win Rate: {(win_times / (win_times + loss_times)):.2%}")
+    print(f"Profit Factor: {abs(total_win_money / total_loss_money):.2}")
