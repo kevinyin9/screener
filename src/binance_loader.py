@@ -34,7 +34,7 @@ class BinanceLoader:
     def __init__(self):
         pass
 
-    def download(self, timeframe, pair_type, training_pair_list=None):
+    def download(self, timeframe, pair_type, symbol=None):
         SINCE = datetime(2024, 1, 1)
         TO = datetime.utcnow()
 
@@ -59,7 +59,7 @@ class BinanceLoader:
         elif pair_type == "CPERP":
             client = ccxt.binancecoinm()
 
-        if training_pair_list == None:
+        if symbol == None:
             symbol_details = client.fetch_markets()
             for i in symbol_details:
                 symbol_ = i["symbol"]
@@ -73,17 +73,18 @@ class BinanceLoader:
         else:
             symbol_details = client.fetch_markets()
             symbols = [i["symbol"].replace('/', '').split(':')[0] for i in symbol_details]
+            
+            if symbol not in symbols:
+                print("not in ", symbol)
+                return
 
-            for symbol in symbols:
-                if symbol not in training_pair_list:
-                    # print(symbol)
-                    continue
-                symbol_onboard_date = datetime.fromtimestamp(
-                    int(symbol_details[0]["info"]["onboardDate"]) / 1000 - 1000
-                )
-                start_dt = symbol_onboard_date if symbol_onboard_date > SINCE else SINCE
-                # print(f"Getting data: {start_dt}, {symbol}, {timeframe}")
-                paginate(client, symbol, timeframe, data_path, pair_type, start_dt, TO)
+            symbol_onboard_date = datetime.fromtimestamp(
+                int(symbol_details[0]["info"]["onboardDate"]) / 1000 - 1000
+            )
+            start_dt = symbol_onboard_date if symbol_onboard_date > SINCE else SINCE
+            # print(f"Getting data: {start_dt}, {symbol}, {timeframe}")
+            # print(symbol)
+            paginate(client, symbol, timeframe, data_path, pair_type, start_dt, TO)
         # print("Saved data.")
 
     def uperp_data_import(self, timeframe, training_pair_list=None):

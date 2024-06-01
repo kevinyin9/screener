@@ -378,7 +378,7 @@ class CryptoDownloader(BaseDownloader):
         try:
             if no_download == False:
                 binance_loader = BinanceLoader()
-                binance_loader.download(time_interval, "UPERP", [crypto])
+                binance_loader.download(time_interval, "UPERP", crypto)
                 
             binance_df = pd.read_csv(f"./data/UPERP/{time_interval}/{crypto}_UPERP_{time_interval}.csv", index_col=0)
             binance_df.index.name = 'Datetime'
