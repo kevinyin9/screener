@@ -120,8 +120,6 @@ def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str,
                 rs_score = 0
                 break
             weight = (((current_close - moving_average_30) + (current_close - moving_average_45) + (current_close - moving_average_60)) * (((bars - i) * days / bars) + 1) + (moving_average_30 - moving_average_45) + (moving_average_30 - moving_average_60) + (moving_average_45 - moving_average_60)) / moving_average_60
-            # if symbol == 'ARUSDT':
-                # print(weight, current_close, moving_average_30, moving_average_45, moving_average_60)
             rs_score += weight * (bars - i)
         rs_score_list.append(rs_score)
         current_date += timedelta(days=1)
@@ -189,27 +187,7 @@ if __name__ == '__main__':
             i += 1
             current_date += timedelta(days=1)
         df = pd.DataFrame(df_list)
-        df.to_csv('abc1.csv')
-        # raise
-        print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
-        all_data = []
-        while current_date <= end_date:
-            row = {}
-            print([x for x in target_score.keys()])
-            symbols = [x for x in target_score.keys() if not math.isnan(target_score[x][current_date])]
-            symbols.sort(key=lambda x: target_score[x][current_date], reverse=True)
-            print(current_date)
-            row['date'] = current_date
-            for idx, crypto in enumerate(symbols[:number_of_target]):
-                score = target_score[crypto][current_date]
-                print(f"{crypto}: {score}")
-                row[idx] = crypto
-            print("===============================================================================")
-            all_data.append(row)
-            current_date += timedelta(days=1)
-        
-        df = pd.DataFrame(all_data)
-        df.to_csv('abc.csv')
+        df.to_csv('rs_value.csv')
     else:
         for result in results:
             if "rs_score" in result:

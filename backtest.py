@@ -74,7 +74,7 @@ def run_backtest(symbol, dates):
     return df
 
 def get_top_n(n):
-    df = pd.read_csv('abc1.csv', index_col=0)
+    df = pd.read_csv('rs_value.csv', index_col=0)
 
     def extract_symbol_quantity(cell_value):
         symbol, rs_value = cell_value.split('_')
