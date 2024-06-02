@@ -391,10 +391,10 @@ class CryptoDownloader(BaseDownloader):
                                         'volume': 'Abs Volume'
                                         }, inplace=True)
             binance_df = binance_df.resample(time_interval).agg({
-                'Open': 'first',
-                'High': 'max',
-                'Low': 'min',
-                'Close': 'last'
+                'open': 'first',
+                'high': 'max',
+                'low': 'min',
+                'close': 'last'
             })
             print(binance_df)
             raise
