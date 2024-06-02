@@ -4,6 +4,7 @@ This script includes functions to download stock market data and crypto from mul
 """
 import os
 import time
+import traceback
 import pandas as pd
 import yfinance as yf
 import requests
@@ -55,13 +56,13 @@ class StockDownloader(BaseDownloader):
             if not existing_table:
                 cursor.execute('''CREATE TABLE stock (
                                    Stock TEXT,
-                                   Datetime DATETIME,
-                                   "Close Price" FLOAT,
-                                   "High Price" FLOAT,
-                                   "Low Price" FLOAT,
-                                   "Open Price" FLOAT,
+                                   datetime DATETIME,
+                                   "close" FLOAT,
+                                   "high" FLOAT,
+                                   "low" FLOAT,
+                                   "open" FLOAT,
                                    "Adj Close" FLOAT,
-                                   Volume INTEGER,
+                                   volume INTEGER,
                                    SMA_20 FLOAT,
                                    SMA_30 FLOAT,
                                    SMA_45 FLOAT,
@@ -69,7 +70,7 @@ class StockDownloader(BaseDownloader):
                                    SMA_60 FLOAT,
                                    SMA_150 FLOAT,
                                    SMA_200 FLOAT,
-                                   PRIMARY KEY (Stock, Datetime)
+                                   PRIMARY KEY (Stock, datetime)
                                    )''')
                 print("Table \"stock\" doesn't exist. A new table has been created successfully.")
 
@@ -178,13 +179,13 @@ class StockDownloader(BaseDownloader):
 
         try:
             # Check if start date and end date are in the table already
-            cursor.execute("SELECT * FROM stock WHERE Datetime LIKE ? AND Stock = ?", (start_date_str + '%', symbol))
+            cursor.execute("SELECT * FROM stock WHERE datetime LIKE ? AND Stock = ?", (start_date_str + '%', symbol))
             start_date_result = cursor.fetchall()
-            cursor.execute("SELECT * FROM stock WHERE Datetime LIKE ? AND Stock = ? ", (end_date_str + '%', symbol))
+            cursor.execute("SELECT * FROM stock WHERE datetime LIKE ? AND Stock = ? ", (end_date_str + '%', symbol))
             end_date_result = cursor.fetchall()
             # If start date and end_date exist in the table, fetch data from database, otherwise fetch data from web
             if start_date_result and end_date_result:
-                cursor.execute("SELECT * FROM stock WHERE date(Datetime) BETWEEN date(?) AND date(?) AND Stock = ?",
+                cursor.execute("SELECT * FROM stock WHERE date(datetime) BETWEEN date(?) AND date(?) AND Stock = ?",
                                (start_date_str, end_date_str, symbol))
                 rows = cursor.fetchall()
                 column_names = [description[0] for description in cursor.description]
@@ -200,14 +201,14 @@ class StockDownloader(BaseDownloader):
                     raise Exception(f"{symbol} -> Error in requesting data from web: {e}")
                 if response.empty:
                     raise ValueError(f"{symbol} -> No stock data")
-                last_datetime_value = check_timezone_to_ny(datetime.strptime(response["Datetime"].values[-1], DB_STRFTIME_FORMAT))
+                last_datetime_value = check_timezone_to_ny(datetime.strptime(response["datetime"].values[-1], DB_STRFTIME_FORMAT))
                 if end_date - last_datetime_value >= timedelta(days=4):
                     raise ValueError(f"{symbol} -> Symbol is off-market")
 
                 # store the data to sqlite3
                 response.insert(0, "Stock", symbol)
-                stored_columns = ['Stock', 'Datetime', 'Close Price', 'High Price', 'Low Price', 'Open Price',
-                                  'Adj Close', 'Volume', "SMA_20", "SMA_30", "SMA_45", "SMA_50", "SMA_60", "SMA_150",
+                stored_columns = ['Stock', 'datetime', 'close', 'high', 'low', 'open',
+                                  'Adj Close', 'volume', "SMA_20", "SMA_30", "SMA_45", "SMA_50", "SMA_60", "SMA_150",
                                   "SMA_200"]
                 for col in response.columns:
                     if not col in stored_columns:
@@ -244,9 +245,9 @@ class StockDownloader(BaseDownloader):
         except Exception as e:
             raise Exception(f"{symbol} -> Fetching data from yfinance. Error: {e}")
         df = df.reset_index()
-        df.rename(columns={"Date": "Datetime", "Open": "Open Price", "Close": "Close Price", "High": "High Price",
-                           "Low": "Low Price"}, inplace=True)
-        df["Datetime"] = pd.to_datetime(df["Datetime"]).dt.strftime(DB_STRFTIME_FORMAT)
+        df.rename(columns={"Date": "datetime", "Open": "open", "Close": "close", "High": "high",
+                           "Low": "low"}, inplace=True)
+        df["datetime"] = pd.to_datetime(df["datetime"]).dt.strftime(DB_STRFTIME_FORMAT)
         for duration in STOCK_SMA:
             df["SMA_" + str(duration)] = round(df.loc[:, "Adj Close"].rolling(window=duration).mean(), 2)
         return df
@@ -277,10 +278,10 @@ class StockDownloader(BaseDownloader):
             if not data:
                 return None
             df = pd.DataFrame(data)
-            df.rename(columns={"date": "Datetime", "close": "Close Price", "high": "High Price", "low": "Low Price",
-                               "open": "Open Price", 'adjClose': 'Adj Close', 'volume': 'Abs Volume',
-                               'adjVolume': 'Volume', }, inplace=True)
-            df['Datetime'] = pd.to_datetime(df.Datetime).dt.strftime(DB_STRFTIME_FORMAT)  # change to datetime object
+            df.rename(columns={"date": "datetime", "close": "close", "high": "high", "low": "low",
+                               "open": "open", 'adjClose': 'Adj Close', 'volume': 'Abs volume',
+                               'adjvolume': 'volume', }, inplace=True)
+            df['datetime'] = pd.to_datetime(df.datetime).dt.strftime(DB_STRFTIME_FORMAT)  # change to datetime object
 
             for duration in STOCK_SMA:
                 df["SMA_" + str(duration)] = round(df.loc[:, "Adj Close"].rolling(window=duration).mean(), 2)
@@ -299,7 +300,7 @@ class CryptoDownloader(BaseDownloader):
 
     def get_volume_rank(self):
         binance_response = self.binance_client.futures_ticker()
-        extracted_data = [(item["symbol"], float(item["quoteVolume"])) for item in binance_response]
+        extracted_data = [(item["symbol"], float(item["quotevolume"])) for item in binance_response]
         sorted_data = sorted(extracted_data, key=lambda x: x[1], reverse=True)
         sorted_data = [x[0] for x in sorted_data] # only get symbol
         return sorted_data[:150] # 150/269
@@ -326,13 +327,13 @@ class CryptoDownloader(BaseDownloader):
             if not existing_table:
                 cursor.execute('''CREATE TABLE crypto (
                                    CRYPTO TEXT,
-                                   Datetime DATETIME,
-                                   "Close Price" FLOAT,
-                                   "High Price" FLOAT,
-                                   "Low Price" FLOAT,
-                                   "Open Price" FLOAT,
-                                   Volume FLOAT,
-                                   PRIMARY KEY (CRYPTO, Datetime)
+                                   datetime DATETIME,
+                                   "close" FLOAT,
+                                   "high" FLOAT,
+                                   "low" FLOAT,
+                                   "open" FLOAT,
+                                   volume FLOAT,
+                                   PRIMARY KEY (CRYPTO, datetime)
                                    )''')
                 print("Table \"crypto\" doesn't exist. A new table has been created successfully.")
 
@@ -382,35 +383,35 @@ class CryptoDownloader(BaseDownloader):
         status = 0  # 0 - fail, 1 - data from database
         try:    
             binance_df = pd.read_csv(f"./data/UPERP/1h/{crypto}_UPERP_1h.csv", index_col=0)
-            binance_df.index.name = 'Datetime'
+            binance_df.index.name = 'datetime'
             binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')
-            binance_df.rename(columns={"close": "Close Price",
-                                        "high": "High Price",
-                                        "low": "Low Price",
-                                        "open": "Open Price",
-                                        'volume': 'Abs Volume'
+            binance_df.rename(columns={"close": "close",
+                                        "high": "high",
+                                        "low": "low",
+                                        "open": "open",
+                                        'volume': 'volume'
                                         }, inplace=True)
             binance_df = binance_df.resample(time_interval).agg({
                 'open': 'first',
                 'high': 'max',
                 'low': 'min',
-                'close': 'last'
+                'close': 'last',
+                'volume': 'sum'
             })
-            print(binance_df)
-            raise
             # else:
                 # binance_df = self.request_binance(crypto, time_interval, timezone)
                 # time.sleep(1)
-                # binance_df.set_index('Datetime', inplace=True)
+                # binance_df.set_index('datetime', inplace=True)
             
             binance_df = binance_df[~binance_df.index.duplicated(keep='first')]
             response = binance_df
             response.reset_index(inplace=True)
             for duration in CRYPTO_SMA:
-                response["SMA_" + str(duration)] = round(response.loc[:, "Close Price"].rolling(window=duration).mean(), 20)
+                response["SMA_" + str(duration)] = round(response.loc[:, "close"].rolling(window=duration).mean(), 20)
             status = 1
-            # print(f"{crypto} -> Get data successfully ({response.iloc[0]['Datetime']} to {response.iloc[-1]['Datetime']})")
+            # print(f"{crypto} -> Get data successfully ({response.iloc[0]['datetime']} to {response.iloc[-1]['datetime']})")
         except Exception as e:
+            print(traceback.format_exc())
             print(f"{crypto} -> Error: {e}")
             response = str(e)
         return crypto, status, response
@@ -420,17 +421,17 @@ class CryptoDownloader(BaseDownloader):
         1500 data points for all timeframe using binance futures instead of binance spots
         """
         response = self.binance_client.futures_klines(symbol=crypto, interval=time_interval, limit=1500)
-        data = pd.DataFrame(response, columns=["Datetime", "Open Price", "High Price", "Low Price", "Close Price",
-                                               "Volume", "Close Time", "Quote Volume", "Number of Trades",
+        data = pd.DataFrame(response, columns=["datetime", "open", "high", "low", "close",
+                                               "volume", "Close Time", "Quote volume", "Number of Trades",
                                                "Taker buy base asset volume", "Taker buy quote asset volume", "Ignore"])
-        data["Open Price"] = data["Open Price"].astype(float)
-        data["High Price"] = data["High Price"].astype(float)
-        data["Low Price"] = data["Low Price"].astype(float)
-        data["Close Price"] = data["Close Price"].astype(float)
-        data["Volume"] = data["Volume"].astype(float)
+        data["open"] = data["open"].astype(float)
+        data["high"] = data["high"].astype(float)
+        data["low"] = data["low"].astype(float)
+        data["close"] = data["close"].astype(float)
+        data["volume"] = data["volume"].astype(float)
         local_timezone = pytz.timezone(timezone)
-        data["Datetime"] = pd.to_datetime(data['Datetime'], unit='ms', utc=True).dt.tz_convert(local_timezone).dt.strftime('%Y-%m-%d %H:%M:%S')
-        data.drop(["Close Time", "Quote Volume", "Number of Trades", "Taker buy base asset volume", "Taker buy quote asset volume",
+        data["datetime"] = pd.to_datetime(data['datetime'], unit='ms', utc=True).dt.tz_convert(local_timezone).dt.strftime('%Y-%m-%d %H:%M:%S')
+        data.drop(["Close Time", "Quote volume", "Number of Trades", "Taker buy base asset volume", "Taker buy quote asset volume",
                    "Ignore"], axis=1, inplace=True)
         return data
 
@@ -462,12 +463,12 @@ class CryptoDownloader(BaseDownloader):
             if not data:
                 return None
             df = pd.DataFrame(data[0]["priceData"])
-            df.rename(columns={"open": "Open Price", "high": "High Price", "low": "Low Price", "close": "Close Price",
-                               'date': 'Datetime', 'tradesDone': 'Trades Done', 'volume': 'Volume',
-                               "volumeNotional": "Volume Notional"}, inplace=True)
-            df.drop(["Trades Done", "Volume Notional"], axis=1, inplace=True)
+            df.rename(columns={"open": "open", "high": "high", "low": "low", "close": "close",
+                               'date': 'datetime', 'tradesDone': 'Trades Done', 'volume': 'volume',
+                               "volumeNotional": "volume Notional"}, inplace=True)
+            df.drop(["Trades Done", "volume Notional"], axis=1, inplace=True)
             local_timezone = pytz.timezone(timezone)
-            df['Datetime'] = pd.to_datetime(df.Datetime, utc=True).dt.tz_convert(local_timezone).dt.strftime(DB_STRFTIME_FORMAT)
+            df['datetime'] = pd.to_datetime(df.datetime, utc=True).dt.tz_convert(local_timezone).dt.strftime(DB_STRFTIME_FORMAT)
         return df
 
 class TWSEDownloader(BaseDownloader):

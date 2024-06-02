@@ -69,7 +69,7 @@ def calc_current_rs(symbol: str, time_interval: str, days: int):
 
     rs_score = 0.0
     for i in range(1, bars+1):
-        current_close = crypto_data['Close Price'].values[-i]
+        current_close = crypto_data['close'].values[-i]
         moving_average_30 = crypto_data['SMA_30'].values[-i]
         moving_average_45 = crypto_data['SMA_45'].values[-i]
         moving_average_60 = crypto_data['SMA_60'].values[-i]
@@ -104,13 +104,14 @@ def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str,
     current_date = start_date
     while current_date <= end_date:
         current_date_dt64 = np.datetime64(current_date.date())
-        df_tmp = crypto_data[crypto_data['Datetime'] <= current_date_dt64]
+        df_tmp = crypto_data[crypto_data['datetime'] <= current_date_dt64]
         rs_score = 0.0
-        # print(df_tmp['Close Price'].values)
+        # print(df_tmp['close'].values)
+        # print(df_tmp)
         for i in range(1, bars+1):
             if i > len(df_tmp):
                 break
-            current_close = df_tmp['Close Price'].values[-i] 
+            current_close = df_tmp['close'].values[-i]
             moving_average_30 = df_tmp['SMA_30'].values[-i]
             moving_average_45 = df_tmp['SMA_45'].values[-i]
             moving_average_60 = df_tmp['SMA_60'].values[-i]
@@ -136,12 +137,14 @@ if __name__ == '__main__':
     history = ini["Base"].getboolean("history")
     start_date = ini["Base"]["start_date"]
     end_date = ini["Base"]["end_date"]
+    no_download = ini["Base"]["no_download"]
     
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
     crypto_downloader = CryptoDownloader()
-    crypto_downloader.download_all()
+    if not no_download:
+        crypto_downloader.download_all()
     # crypto_downloader.check_crypto_table()
     all_cryptos = crypto_downloader.get_all_symbols()
     # all_cryptos = crypto_downloader.get_volume_rank()
