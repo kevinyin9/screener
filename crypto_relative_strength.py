@@ -47,10 +47,10 @@ def calc_total_bars(time_interval, days):
     return bars_dict.get(time_interval)
 
 
-def calc_current_rs(symbol: str, time_interval: str, days: int, no_download=False):
+def calc_current_rs(symbol: str, time_interval: str, days: int):
     try:
         cd = CryptoDownloader()
-        crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE, no_download=no_download)
+        crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
         if status == 0:
             if crypto_data:
                 print(f"{symbol} fails to get data -> {crypto_data}")
@@ -78,10 +78,10 @@ def calc_current_rs(symbol: str, time_interval: str, days: int, no_download=Fals
 
     return {"crypto": symbol, "rs_score": rs_score}
 
-def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str, end_date: str, no_download=False):
+def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str, end_date: str):
     try:
         cd = CryptoDownloader()
-        crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE, no_download=no_download)
+        crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
         if status == 0:
             if crypto_data:
                 print(f"{symbol} fails to get data -> {crypto_data}")
@@ -133,7 +133,6 @@ if __name__ == '__main__':
 
     timeframe = ini["Base"]["timeframe"]      # Time frame: 3m, 5m, 15m, 30m, 1h, 2h, 4h
     total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
-    no_download = ini["Base"].getboolean("no_download")
     history = ini["Base"].getboolean("history")
     start_date = ini["Base"]["start_date"]
     end_date = ini["Base"]["end_date"]
@@ -142,6 +141,7 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
     crypto_downloader = CryptoDownloader()
+    crypto_downloader.download_all()
     # crypto_downloader.check_crypto_table()
     all_cryptos = crypto_downloader.get_all_symbols()
     # all_cryptos = crypto_downloader.get_volume_rank()
@@ -153,9 +153,9 @@ if __name__ == '__main__':
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         if history:
-            future_tasks = [executor.submit(calc_history_rs, crypto, timeframe, total_days, start_date, end_date, no_download) for crypto in all_cryptos]
+            future_tasks = [executor.submit(calc_history_rs, crypto, timeframe, total_days, start_date, end_date) for crypto in all_cryptos]
         else:
-            future_tasks = [executor.submit(calc_current_rs, crypto, timeframe, total_days, no_download) for crypto in all_cryptos]
+            future_tasks = [executor.submit(calc_current_rs, crypto, timeframe, total_days) for crypto in all_cryptos]
         results = [future.result() for future in as_completed(future_tasks)]
 
     failed_targets = []     # Failed to download data or error happened

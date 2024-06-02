@@ -57,6 +57,8 @@ class BinanceLoader:
             symbol_details = client.fetch_markets()
             for i in tqdm(symbol_details):
                 symbol_ = i["symbol"]
+                if symbol_[-4:] != "USDT":
+                    continue
                 symbol_onboard_date = datetime.fromtimestamp(
                     int(i["info"]["onboardDate"]) / 1000 - 1000
                 )

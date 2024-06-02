@@ -291,8 +291,11 @@ class CryptoDownloader(BaseDownloader):
     def __init__(self, api_keys: dict = None, save_dir: str = ".", db_name="screen.db"):
         super().__init__(api_keys, save_dir, db_name)
         self.binance_client = Client(requests_params={"timeout": 300})
+
+    def download_all(self):
         self.binance_loader = BinanceLoader()
         self.binance_loader.download("UPERP")
+        print("download done")
 
     def get_volume_rank(self):
         binance_response = self.binance_client.futures_ticker()

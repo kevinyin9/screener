@@ -60,6 +60,7 @@ def paginate(
                 if timestampt_to_datetime(since) > to_dt - timedelta(hours=1):
                     break
                 else:
+                    print("time.sleep", client.rateLimit / 1000)
                     time.sleep(client.rateLimit / 1000)
             else:
                 print(symbol, since, patch)

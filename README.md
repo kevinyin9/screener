@@ -27,7 +27,6 @@ Set the config.ini file to your own preference.
 ```ini
 timeframe = 1h          # 3m, 5m, 15m, 30m, 1h, 2h, 4h
 total_days = 1          # Calculation duration in days (max: 1440 bars), e.g. 1440 / (24 bars per day in 1h) = 60
-no_download = True      # Whether to download data or use existing local data
 history = True          # Whether to calculate relative strength for specific past date
 start_date = 2024-02-03 # Must set the date if history is True
 end_date = 2024-02-07   # Must set the date if history is True
