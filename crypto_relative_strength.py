@@ -142,14 +142,14 @@ if __name__ == '__main__':
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
 
     crypto_downloader = CryptoDownloader()
-    crypto_downloader.check_crypto_table()
-    # all_cryptos = crypto_downloader.get_all_symbols()
-    all_cryptos = crypto_downloader.get_volume_rank()
+    # crypto_downloader.check_crypto_table()
+    all_cryptos = crypto_downloader.get_all_symbols()
+    # all_cryptos = crypto_downloader.get_volume_rank()
     
     # remove specfic symbols in all_cryptos
     if ini["Base"]["exclude_symbols"]:
         exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
-        all_cryptos = [x for x in all_cryptos if x not in exclude_symbols and x.find('USDT') != -1]
+        all_cryptos = [x for x in all_cryptos if x not in exclude_symbols] #and x.find('USDT') != -1]
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         if history:
@@ -176,7 +176,6 @@ if __name__ == '__main__':
         while current_date <= end_date:
             row = {}
             row['date'] = current_date
-            current_date += timedelta(days=1)
 
             values = {symbol: target_score[symbol][i] for symbol in target_score}
             sorted_values = {k: v for k, v in sorted(values.items(), key=lambda item: item[1])}
@@ -185,6 +184,7 @@ if __name__ == '__main__':
                 row[idx] = str(v) + '_' + str(sorted_values[v])
             df_list.append(row)
             i += 1
+            current_date += timedelta(days=1)
         df = pd.DataFrame(df_list)
         df.to_csv('abc1.csv')
         # raise

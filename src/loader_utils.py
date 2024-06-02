@@ -62,6 +62,7 @@ def paginate(
                 else:
                     time.sleep(client.rateLimit / 1000)
             else:
+                print(symbol, since, patch)
                 if timeframe == "1h":
                     since += 2592000000  # 1 month
                 else:
@@ -114,4 +115,3 @@ def paginate(
         )
 
         df.to_csv(file, index=False)
-    time.sleep(1)

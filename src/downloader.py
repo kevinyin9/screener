@@ -291,6 +291,8 @@ class CryptoDownloader(BaseDownloader):
     def __init__(self, api_keys: dict = None, save_dir: str = ".", db_name="screen.db"):
         super().__init__(api_keys, save_dir, db_name)
         self.binance_client = Client(requests_params={"timeout": 300})
+        self.binance_loader = BinanceLoader()
+        self.binance_loader.download("UPERP")
 
     def get_volume_rank(self):
         binance_response = self.binance_client.futures_ticker()
@@ -373,14 +375,10 @@ class CryptoDownloader(BaseDownloader):
                 for item in fail:
                     f.write(f"{item[0]} failed -> {item[1]}\n")
 
-    def get_crypto(self, crypto, time_interval="15m", timezone="America/Los_Angeles", no_download=False):
+    def get_crypto(self, crypto, time_interval="1H", timezone="America/Los_Angeles"):
         status = 0  # 0 - fail, 1 - data from database
-        try:
-            if no_download == False:
-                binance_loader = BinanceLoader()
-                binance_loader.download(time_interval, "UPERP", crypto)
-                
-            binance_df = pd.read_csv(f"./data/UPERP/{time_interval}/{crypto}_UPERP_{time_interval}.csv", index_col=0)
+        try:    
+            binance_df = pd.read_csv(f"./data/UPERP/1h/{crypto}_UPERP_1h.csv", index_col=0)
             binance_df.index.name = 'Datetime'
             binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')
             binance_df.rename(columns={"close": "Close Price",
@@ -389,7 +387,14 @@ class CryptoDownloader(BaseDownloader):
                                         "open": "Open Price",
                                         'volume': 'Abs Volume'
                                         }, inplace=True)
-                # print(binance_df)
+            binance_df = binance_df.resample(time_interval).agg({
+                'Open': 'first',
+                'High': 'max',
+                'Low': 'min',
+                'Close': 'last'
+            })
+            print(binance_df)
+            raise
             # else:
                 # binance_df = self.request_binance(crypto, time_interval, timezone)
                 # time.sleep(1)

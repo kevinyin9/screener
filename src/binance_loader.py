@@ -1,11 +1,9 @@
 import os
-from os import listdir
-from os.path import isfile, join
 import sys
-from fnmatch import fnmatch
 from datetime import datetime
 import argparse
 from pathlib import Path
+from tqdm import tqdm
 
 sys.path.append(".")
 sys.path.append("../")
@@ -34,34 +32,30 @@ class BinanceLoader:
     def __init__(self):
         pass
 
-    def download(self, timeframe, pair_type, symbol=None):
-        SINCE = datetime(2024, 1, 1)
-        TO = datetime.utcnow()
+    def download(self, pair_type, symbol=None):
+        timeframe = '1h' # always download 1h, and resample to other timeframe.
+        SINCE = datetime(2020, 1, 1)
+        TO = datetime.now()
 
         data_center_path = "./data"
         os.makedirs(data_center_path, exist_ok=True)
 
         if pair_type == "SPOT":
             data_path = f"{data_center_path}/SPOT"
-        elif pair_type == "UPERP":
-            data_path = f"{data_center_path}/UPERP"
-        elif pair_type == "CPERP":
-            data_path = f"{data_center_path}/CPERP"
-
-        data_path = data_path + "/" + timeframe
-
-        os.makedirs(data_path, exist_ok=True)
-
-        if pair_type == "SPOT":
             client = ccxt.binance()
         elif pair_type == "UPERP":
+            data_path = f"{data_center_path}/UPERP"
             client = ccxt.binanceusdm()
         elif pair_type == "CPERP":
+            data_path = f"{data_center_path}/CPERP"
             client = ccxt.binancecoinm()
+
+        data_path += "/" + timeframe
+        os.makedirs(data_path, exist_ok=True)
 
         if symbol == None:
             symbol_details = client.fetch_markets()
-            for i in symbol_details:
+            for i in tqdm(symbol_details):
                 symbol_ = i["symbol"]
                 symbol_onboard_date = datetime.fromtimestamp(
                     int(i["info"]["onboardDate"]) / 1000 - 1000
@@ -75,7 +69,7 @@ class BinanceLoader:
             symbols = [i["symbol"].replace('/', '').split(':')[0] for i in symbol_details]
             
             if symbol not in symbols:
-                print("not in ", symbol)
+                print(f"{symbol} not in current market.")
                 return
 
             symbol_onboard_date = datetime.fromtimestamp(
