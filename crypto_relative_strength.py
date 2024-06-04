@@ -19,37 +19,26 @@ bot = telebot.TeleBot(TOKEN)
 CURRENT_TIMEZONE = "America/Los_Angeles"
 ##########################################################
 
-
-def calc_day_bars(time_interval):
-    bars_dict = {
-        "1m": 1440,
-        "3m": 380,
-        "5m": 288,
-        "15m": 96,
-        "30m": 48,
-        "1h":  24,
-        "2h": 12,
-        "4h": 6,
-    }
-    return bars_dict.get(time_interval)
-
 def calc_total_bars(time_interval, days):
     bars_dict = {
-        "1m": 60 * 24 * days, # 1440
-        "3m": 20 * 24 * days,
-        "5m": 12 * 24 * days,
-        "15m": 4 * 24 * days,
-        "30m": 2 * 24 * days,
-        "1h":  24 * days,
-        "2h": 12 * days,
-        "4h": 6 * days,
+        "1m":   60 * 24 * days, # 1440
+        "3m":   20 * 24 * days,
+        "5m":   12 * 24 * days,
+        "15m":  4 * 24 * days,
+        "30m":  2 * 24 * days,
+        "1h":   24 * days,
+        "2h":   12 * days,
+        "4h":   6 * days,
+        "8h":   3 * days,
+        "24h":  1 * days,
     }
     return bars_dict.get(time_interval)
 
 
-def calc_current_rs(symbol: str, time_interval: str, days: int):
+def calc_current_rs(symbol: str, days: int):
     try:
         cd = CryptoDownloader()
+        time_interval = '1h'
         crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
         if status == 0:
             if crypto_data:
@@ -78,9 +67,10 @@ def calc_current_rs(symbol: str, time_interval: str, days: int):
 
     return {"crypto": symbol, "rs_score": rs_score}
 
-def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str, end_date: str):
+def calc_history_rs(symbol: str, days: int, start_date: str, end_date: str):
     try:
         cd = CryptoDownloader()
+        time_interval = '1h'
         crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
         if status == 0:
             if crypto_data:
@@ -93,21 +83,16 @@ def calc_history_rs(symbol: str, time_interval: str, days: int, start_date: str,
         return {"crypto": symbol, "rs_score": 0}
 
     bars = calc_total_bars(time_interval, days)
-    if bars > 1440:
-        raise ValueError(f"Requesting too many bars. Limitation: 1440 bars. Your are requesting {bars} bars. Please decrease total days.")
-    if len(crypto_data) < bars + 60:
+    if len(crypto_data) < bars + 60:                # bars太少
         return {"crypto": symbol, "rs_score": 0}
-
-    day_bars = calc_day_bars(time_interval)
 
     rs_score_list = []
     current_date = start_date
     while current_date <= end_date:
         current_date_dt64 = np.datetime64(current_date.date())
         df_tmp = crypto_data[crypto_data['datetime'] <= current_date_dt64]
+        df_tmp.fillna(0)
         rs_score = 0.0
-        # print(df_tmp['close'].values)
-        # print(df_tmp)
         for i in range(1, bars+1):
             if i > len(df_tmp):
                 break
@@ -130,7 +115,6 @@ if __name__ == '__main__':
     ini = config.Config()
     ini.read('{0}/ini/config.ini'.format(os.getcwd()))
 
-    timeframe = ini["Base"]["timeframe"]      # Time frame: 3m, 5m, 15m, 30m, 1h, 2h, 4h
     total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
     history = ini["Base"].getboolean("history")
     start_date = ini["Base"]["start_date"]
@@ -154,9 +138,9 @@ if __name__ == '__main__':
 
     with ThreadPoolExecutor(max_workers=20) as executor:
         if history:
-            future_tasks = [executor.submit(calc_history_rs, crypto, timeframe, total_days, start_date, end_date) for crypto in all_cryptos]
+            future_tasks = [executor.submit(calc_history_rs, crypto, total_days, start_date, end_date) for crypto in all_cryptos]
         else:
-            future_tasks = [executor.submit(calc_current_rs, crypto, timeframe, total_days) for crypto in all_cryptos]
+            future_tasks = [executor.submit(calc_current_rs, crypto, total_days) for crypto in all_cryptos]
         results = [future.result() for future in as_completed(future_tasks)]
 
     failed_targets = []     # Failed to download data or error happened
@@ -208,10 +192,3 @@ if __name__ == '__main__':
         print("===============================================================================")
 
         bot.send_message(CHAT_ID, msg)
-    # Write to txt file
-    # txt_content = "###BTCETH\nBINANCE:BTCUSDT.P,BINANCE:ETHUSDT\n###Targets (Sort by score)\n"
-    # for crypto in symbols:
-    #     txt_content += f",BINANCE:{crypto}.P"
-    # date_str = datetime.now().strftime("%Y-%m-%d %H%M")
-    # with open(f"{date_str}_crypto_relative_strength_{timeframe}.txt", "w") as f:
-    #     f.write(txt_content)
