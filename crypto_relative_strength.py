@@ -135,7 +135,7 @@ if __name__ == '__main__':
     history = ini["Base"].getboolean("history")
     start_date = ini["Base"]["start_date"]
     end_date = ini["Base"]["end_date"]
-    no_download = ini["Base"]["no_download"]
+    no_download = ini["Base"].getboolean("no_download")
     
     start_date = datetime.strptime(start_date, "%Y-%m-%d")
     end_date = datetime.strptime(end_date, "%Y-%m-%d")
