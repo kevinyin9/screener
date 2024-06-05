@@ -4,3 +4,4 @@ __pycache__/
 *.txt
 /data/
 *.csv
+./backtest_result.json
