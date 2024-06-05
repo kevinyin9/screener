@@ -97,7 +97,6 @@ def get_top_n(n):
 if __name__ == '__main__':
     n = 5
     top_n_dict = get_top_n(n)
-
     backtest_result_dict = {}
     for symbol, dates in top_n_dict.items():
         backtest_result_dict[symbol] = run_backtest(symbol, dates).to_json()
