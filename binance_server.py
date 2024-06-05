@@ -8,6 +8,7 @@
 
 # another
 # - -> +
+import traceback
 import telebot
 
 TOKEN = "5943012661:AAG2_LfS73WDWz67fiffSzm1B7uoJ1jQOwk"  # tw_future_bot
@@ -191,6 +192,8 @@ def on_message(ws, message):
 
 def on_error(ws, error):
     print("Error: ", error)
+    print(traceback.format_exc())
+    bot.send_message(CHAT_ID, f"Error: {error}")
 
 def on_close(ws, close_status_code, close_msg):
     print("Closed connection")
