@@ -239,6 +239,8 @@ if __name__ == '__main__':
     t1.daemon = True
     t1.start()
     
+    for symbol in whitelist:
+        alert_list[symbol] = False
     t2 = Thread(target=reset_alert_list)
     t2.daemon = True
     t2.start()
