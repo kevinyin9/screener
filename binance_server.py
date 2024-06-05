@@ -225,19 +225,26 @@ def start_websocket():
 def reset_alert_list():
     while True:
         now = datetime.now()
-        if now.minute == 0 and now.second == 0:
+        if now.minute == 0 and now.second < 5:
             for symbol in whitelist:
                 alert_list[symbol] = False
+        time.sleep(1)
 
 if __name__ == '__main__':
     
     update_local_data()
 
     # Run websocket in a separate thread
-    thread = Thread(target=start_websocket)
-    thread.daemon = True
-    thread.start()
-    thread.join()
+    t1 = Thread(target=start_websocket)
+    t1.daemon = True
+    t1.start()
+    
+    t2 = Thread(target=reset_alert_list)
+    t2.daemon = True
+    t2.start()
+    
+    t1.join()
+    t2.join()
     
     
 
