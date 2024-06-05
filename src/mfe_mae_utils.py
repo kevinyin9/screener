@@ -125,17 +125,17 @@ def mfe_before_mdd(trades, eth):
 
 #可以把trades換成只有虧損的單，就可以看到他的分佈
 def plot_mae_mfe_dist(trades): 
-    sns.distplot(trades['mfe/mae'])
+    sns.histplot(trades['mfe/mae'])
     plt.title('MFE/MAE Distribution')
     plt.xlabel('MFE')
     plt.ylabel('Density')
     plt.show()
-    sns.distplot(trades['bmfe'])
+    sns.histplot(trades['bmfe'])
     plt.title('MFE bfore MAE Distribution')
     plt.xlabel('MFE bfore MAE')
     plt.ylabel('Density')
     plt.show()
-    sns.distplot(trades['mfe/mdd']) # 這個我覺得可以深入研究，再遇到mdd之前的最大獲利除以mdd
+    sns.histplot(trades['mfe/mdd']) # 這個我覺得可以深入研究，再遇到mdd之前的最大獲利除以mdd
     plt.title('MFE before MDD Distribution')
     plt.xlabel('MFE before MDD')
     plt.ylabel('Density')
