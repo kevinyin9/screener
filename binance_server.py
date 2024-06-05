@@ -19,6 +19,12 @@ import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
+import websocket
+import json
+import requests
+import numpy as np
+from threading import Thread
+from datetime import datetime
 
 from strategy_long import long_atr_tp, long_bband_tp
 from strategy_short import short_atr_tp, short_bband_tp
@@ -52,15 +58,6 @@ def get_top_n(n):
             top_n_dict[symbol].append(date)
     return top_n_dict
 
-
-import websocket
-import json
-import pandas as pd
-import requests
-import numpy as np
-from threading import Thread
-
-
 os.makedirs('data', exist_ok=True)
 os.makedirs('data/UPERP', exist_ok=True)
 os.makedirs('data/UPERP/1h', exist_ok=True)
@@ -83,6 +80,7 @@ for line in [s.replace('BINANCE:', '').replace('.P', '') for x in s.split('\n')]
         tmp.add(symbol[symbol.find(',')+1:] + 'USDT')
 
 whitelist = list(tmp)
+alert_list = {}
 print(f"whitelist: {whitelist}")
 # Dictionary to hold data in memory
 data_in_memory = {symbol: None for symbol in whitelist}
@@ -183,7 +181,8 @@ def on_message(ws, message):
             df_updated = calculate_bollinger_bands(df_updated)
             # print(df_updated)
             last_row = df_updated.iloc[-1]
-            if last_row.close < last_row['Lower Band']:
+            if last_row.close < last_row['Lower Band'] and alert_list[symbol] == False:
+                alert_list[symbol] = True
                 bot.send_message(CHAT_ID, f"{symbol} touches lower band.")
             # save_local_data(symbol, df_updated)
             # print(df.tail(2))
@@ -220,6 +219,13 @@ def start_websocket():
                                 on_close=on_close)
     ws.run_forever()
 
+def reset_alert_list():
+    while True:
+        now = datetime.now()
+        if now.minute == 0 and now.second == 0:
+            for symbol in whitelist:
+                alert_list[symbol] = False
+
 if __name__ == '__main__':
     
     update_local_data()
@@ -229,6 +235,8 @@ if __name__ == '__main__':
     thread.daemon = True
     thread.start()
     thread.join()
+    
+    
 
     # thread = Thread(target=get_top_n, args=(5, ))
     # thread.daemon = True
