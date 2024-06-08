@@ -16,7 +16,7 @@ API keys are needed for [Tiingo](https://tiingo.com/) and [Stocksymbol](https://
 
 1. Crypto relative strength
 
-Identify strong performing assets by comparing them with SMA-30, SMA-45 and SMA-60 (Default time frame = 15m, total days = 7)
+Identify strong performing assets by comparing SMA-30, SMA-45 and SMA-60
 
 ```bash
 python3 crypto_relative_strength.py
@@ -33,7 +33,7 @@ end_date = 2024-02-07   # Must set the date if history is True
 exclude_symbols = LSKUSDT,JUPUSDT,ZETAUSDT,ALTUSDT,RONINUSDT,DYMUSDT
 ```
 
-* Change CURRENT_TIMEZONE in the file if timezone is essential to you.[[Refer](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)]
+* Change CURRENT_TIMEZONE in the file if timezone is essential to you.
 
 2. US stock trend template
 
@@ -65,9 +65,3 @@ To import crypto or stock downloader for your own usage, simply include the foll
 from src.downloader import StockDownloader
 from src.downloader import CryptoDownloader
 ```
-
-When devising your own strategy, feel free to refer to the existing strategies for guidance and inspiration. The stock data is downloaded from Tiingo and Yahoo Finance, and the cryptocurrency data is obtained from Binance.
-
-## License
-
-[MIT](https://choosealicense.com/licenses/mit/)

@@ -381,7 +381,7 @@ class CryptoDownloader(BaseDownloader):
 
     def get_crypto(self, crypto, time_interval="1H", timezone="America/Los_Angeles"):
         status = 0  # 0 - fail, 1 - data from database
-        try:    
+        try:
             binance_df = pd.read_csv(f"./data/UPERP/1h/{crypto}_UPERP_1h.csv", index_col=0)
             binance_df.index.name = 'datetime'
             binance_df.index = pd.to_datetime(binance_df.index, format='%Y-%m-%d %H:%M:%S')

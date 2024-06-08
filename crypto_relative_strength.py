@@ -1,6 +1,5 @@
 import math
 import os
-
 import numpy as np
 import pandas as pd
 import config
@@ -12,7 +11,8 @@ from datetime import datetime, timedelta
 import telebot
 
 TOKEN = "5943012661:AAG2_LfS73WDWz67fiffSzm1B7uoJ1jQOwk"  # tw_future_bot
-CHAT_ID = -833718924
+# CHAT_ID = -833718924 # 母牛飛上天
+CHAT_ID = -4218798338 # 加密強弱勢
 bot = telebot.TeleBot(TOKEN)
 
 ##################### CONFIGURATIONS #####################
@@ -34,62 +34,52 @@ def calc_total_bars(time_interval, days):
     }
     return bars_dict.get(time_interval)
 
+def calc_total_bar_fixed(time_interval):
+    bars_dict = {
+        "1h":   60,
+        "4h":   45,
+        "8h":   30,
+        "24h":  10,
+    }
+    return bars_dict.get(time_interval)
 
-def calc_current_rs(symbol: str, days: int):
+def calc_rs(symbol: str, time_interval, days, start_date: str, end_date: str):
     try:
         cd = CryptoDownloader()
-        time_interval = '1h'
         crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
-        if status == 0:
-            if crypto_data:
-                print(f"{symbol} fails to get data -> {crypto_data}")
-            return {"crypto": symbol, "rs_score": 0}
-        if crypto_data.empty:
+        if status == 0 or crypto_data.empty:
+            # if crypto_data:
+            print(f"{symbol} status:{status}, fails to get data -> {crypto_data}")
             return {"crypto": symbol, "rs_score": 0}
     except Exception as e:
         print(f"Error in getting {symbol} info: {e}")
         return {"crypto": symbol, "rs_score": 0}
 
-    bars = calc_total_bars(time_interval, days)
-    if bars > 1440:
-        raise ValueError(f"Requesting too many bars. Limitation: 1440 bars. Your are requesting {bars} bars. Please decrease total days.")
-    if len(crypto_data) < bars + 60:
+    bars = calc_total_bars(time_interval, days) # 這個bar的數量是寫死的，需要tune?
+    if len(crypto_data) < bars:                # 若資料數量太少，就不算了
+        print(crypto_data)
+        print(f"{symbol} {time_interval} bar to less, {bars}")
         return {"crypto": symbol, "rs_score": 0}
 
-    rs_score = 0.0
-    for i in range(1, bars+1):
-        current_close = crypto_data['close'].values[-i]
-        moving_average_30 = crypto_data['SMA_30'].values[-i]
-        moving_average_45 = crypto_data['SMA_45'].values[-i]
-        moving_average_60 = crypto_data['SMA_60'].values[-i]
-        weight = (((current_close - moving_average_30) + (current_close - moving_average_45) + (current_close - moving_average_60)) * (((bars - i) * days / bars) + 1) + (moving_average_30 - moving_average_45) + (moving_average_30 - moving_average_60) + (moving_average_45 - moving_average_60)) / moving_average_60
-        rs_score += weight * (bars - i)
+    # def calculate_weight(row, i, bars, days):
+    #     current_close = row['close']
+    #     moving_average_30 = row['SMA_30']
+    #     moving_average_45 = row['SMA_45']
+    #     moving_average_60 = row['SMA_60']
 
-    return {"crypto": symbol, "rs_score": rs_score}
-
-def calc_history_rs(symbol: str, days: int, start_date: str, end_date: str):
-    try:
-        cd = CryptoDownloader()
-        time_interval = '1h'
-        crypto, status, crypto_data = cd.get_crypto(symbol, time_interval=time_interval, timezone=CURRENT_TIMEZONE)
-        if status == 0:
-            if crypto_data:
-                print(f"{symbol} fails to get data -> {crypto_data}")
-            return {"crypto": symbol, "rs_score": 0}
-        if crypto_data.empty:
-            return {"crypto": symbol, "rs_score": 0}
-    except Exception as e:
-        print(f"Error in getting {symbol} info: {e}")
-        return {"crypto": symbol, "rs_score": 0}
-
-    bars = calc_total_bars(time_interval, days)
-    if len(crypto_data) < bars + 60:                # bars太少
-        return {"crypto": symbol, "rs_score": 0}
-
+    #     weight = (((current_close - moving_average_30) + 
+    #             (current_close - moving_average_45) + 
+    #             (current_close - moving_average_60)) * 
+    #             (((bars - i) * days / bars) + 1) + 
+    #             (moving_average_30 - moving_average_45) + 
+    #             (moving_average_30 - moving_average_60) + 
+    #             (moving_average_45 - moving_average_60)) / moving_average_60
+    #     return weight * (bars - i)
+    
     rs_score_list = []
     current_date = start_date
     while current_date <= end_date:
-        current_date_dt64 = np.datetime64(current_date.date())
+        current_date_dt64 = np.datetime64(current_date)
         df_tmp = crypto_data[crypto_data['datetime'] <= current_date_dt64]
         df_tmp.fillna(0)
         rs_score = 0.0
@@ -101,28 +91,33 @@ def calc_history_rs(symbol: str, days: int, start_date: str, end_date: str):
             moving_average_45 = df_tmp['SMA_45'].values[-i]
             moving_average_60 = df_tmp['SMA_60'].values[-i]
             if np.isnan(moving_average_30) or np.isnan(moving_average_45) or np.isnan(moving_average_60):
-                print(f"{symbol} nan fk")
+                print(f"{symbol} {current_date} is nan")
                 rs_score = 0
                 break
             weight = (((current_close - moving_average_30) + (current_close - moving_average_45) + (current_close - moving_average_60)) * (((bars - i) * days / bars) + 1) + (moving_average_30 - moving_average_45) + (moving_average_30 - moving_average_60) + (moving_average_45 - moving_average_60)) / moving_average_60
             rs_score += weight * (bars - i)
+
+        # df_tmp = df_tmp.iloc[-bars:]  # 取最后bars行数据
+        # df_tmp = df_tmp.reset_index(drop=True)  # 重置索引
+
+        # # 创建一个新的列来保存计算结果
+        # df_tmp['rs_value'] = df_tmp.apply(lambda row: calculate_weight(row, df_tmp.index.get_loc(row.name) + 1, bars, days), axis=1)
+
+        # # 计算rs_score
+        # rs_score = df_tmp['rs_value'].sum()
+        
         rs_score_list.append(rs_score)
         current_date += timedelta(days=1)
 
     return {"crypto": symbol, "rs_score_list": rs_score_list}
 
-if __name__ == '__main__':
-    ini = config.Config()
-    ini.read('{0}/ini/config.ini'.format(os.getcwd()))
-
-    total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
-    history = ini["Base"].getboolean("history")
-    start_date = ini["Base"]["start_date"]
-    end_date = ini["Base"]["end_date"]
-    no_download = ini["Base"].getboolean("no_download")
-    
-    start_date = datetime.strptime(start_date, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date, "%Y-%m-%d")
+def main(history, start_date, end_date, no_download):
+    if history:
+        start_date = datetime.strptime(start_date, "%Y-%m-%d")
+        end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    else:
+        start_date = datetime.now().date()
+        end_date = datetime.now().date()
 
     crypto_downloader = CryptoDownloader()
     if not no_download:
@@ -136,27 +131,32 @@ if __name__ == '__main__':
         exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
         all_cryptos = [x for x in all_cryptos if x not in exclude_symbols] #and x.find('USDT') != -1]
 
-    with ThreadPoolExecutor(max_workers=20) as executor:
-        if history:
-            future_tasks = [executor.submit(calc_history_rs, crypto, total_days, start_date, end_date) for crypto in all_cryptos]
-        else:
-            future_tasks = [executor.submit(calc_current_rs, crypto, total_days) for crypto in all_cryptos]
-        results = [future.result() for future in as_completed(future_tasks)]
+    time_interval_to_days = {
+        "1h": 5,  # 120 bars
+        "4h": 10, # 60 bars
+        "8h": 15, # 45 bars
+        "24h": 20 # 20 bars 
+    }
 
-    failed_targets = []     # Failed to download data or error happened
-    target_score = {}
-    # print(results)
-    if history:
+    for time_interval, days in time_interval_to_days.items():
+        with ThreadPoolExecutor(max_workers=20) as executor:
+            future_tasks = [executor.submit(calc_rs, crypto, time_interval, days, start_date, end_date) for crypto in all_cryptos]
+            results = [future.result() for future in as_completed(future_tasks)]
+
+        print(results)
+        df_list = []
+        failed_targets = []     # Failed to download data or error happened
+        target_score = {}
         for result in results:
             if "rs_score_list" in result and result["rs_score_list"] != []:
                 target_score[result["crypto"]] = result["rs_score_list"]
             else:
                 failed_targets.append(result["crypto"])
-        
-        number_of_target = 15
+            
+        if len(failed_targets) != 0:
+            print(f"Failed targets: {failed_targets}")
+
         current_date = start_date
-        
-        df_list = []
         i = 0
         while current_date <= end_date:
             row = {}
@@ -166,29 +166,24 @@ if __name__ == '__main__':
             sorted_values = {k: v for k, v in sorted(values.items(), key=lambda item: item[1])}
             print(current_date, sorted_values)
             for idx, v in enumerate(sorted_values.keys()):
-                row[idx] = str(v) + '_' + str(sorted_values[v])
+                row[idx] = f"{v}_{str(sorted_values[v])}"
+            print("row: ", row)
             df_list.append(row)
             i += 1
             current_date += timedelta(days=1)
         df = pd.DataFrame(df_list)
-        df.to_csv('rs_value.csv')
-    else:
-        for result in results:
-            if "rs_score" in result:
-                target_score[result["crypto"]] = result["rs_score"]
-            else:
-                failed_targets.append(result["crypto"])
-        print(target_score)
-        number_of_target = 15
-        symbols = [x for x in target_score.keys()]
-        symbols.sort(key=lambda x: target_score[x], reverse=True)
-        print("Failed targets: %s" % ", ".join(failed_targets))
-        print(f"\n=========================== Target : Score (TOP {number_of_target}) ===========================")
-        msg = ""
-        for crypto in symbols[:number_of_target]:
-            score = target_score[crypto]
-            print(f"{crypto}: {round(score, 2)}")
-            msg += f"{crypto}: {round(score, 2)}"
-        print("===============================================================================")
+        df.to_csv(f'rs_value_{time_interval}.csv')
+    # msg = ""
+    # bot.send_message(CHAT_ID, msg)
 
-        bot.send_message(CHAT_ID, msg)
+if __name__ == '__main__':
+    ini = config.Config()
+    ini.read('{0}/ini/config.ini'.format(os.getcwd()))
+
+    total_days = int(ini["Base"]["total_days"])    # Calculation duration in days
+    history = ini["Base"].getboolean("history")
+    start_date = ini["Base"]["start_date"]
+    end_date = ini["Base"]["end_date"]
+    no_download = ini["Base"].getboolean("no_download")
+        
+    main(history, start_date, end_date, no_download)
