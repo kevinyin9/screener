@@ -96,6 +96,5 @@ if __name__ == '__main__':
     for symbol, dates in top_n_dict.items():
         backtest_result_dict[symbol] = run_backtest(symbol, dates).to_json()
 
-    
-    # with open('backtest_result.json', 'w') as fp:
-    #     json.dump(backtest_result_dict, fp)
+    with open('backtest_result.json', 'w') as fp:
+        json.dump(backtest_result_dict, fp)
