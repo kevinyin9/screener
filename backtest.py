@@ -43,13 +43,8 @@ def run_backtest(symbol, dates):
     # df = short_bband_tp(df)
     # df = long_bband_tp(df) # 40.48%, 2.8
     df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
-
-    # 计算每日回报
-    df['daily_return'] = df['close'].pct_change()
-    df['strategy_return'] = df['daily_return'] * df['position'].shift(1)
-
+    
     # 计算累计回报
-    df['cumulative_market_return'] = (1 + df['daily_return']).cumprod()
     df['cumulative_strategy_return'] = (1 + df['strategy_return']).cumprod()
 
     # 绘制回报曲线
