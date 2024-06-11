@@ -74,32 +74,33 @@ def run_backtest(symbol, dates):
     return df
 
 def get_top_n(n):
-    df = pd.read_csv('rs_value.csv', index_col=0)
-
     def extract_symbol_quantity(cell_value):
         symbol, rs_value = cell_value.split('_')
         return symbol, float(rs_value)
 
     top_n_dict = {}
+    for time_interval in ['1h', '4h', '8h', '24h']:
+        df = pd.read_csv(f'rs_value_{time_interval}.csv', index_col=0)
 
-    len_col = len(df.columns)
-    for _, row in df.iterrows():
-        date = row['date']
-        # for column in df.columns[1:n+2]: # get weakest top-n
-        for column in df.columns[len_col - n:len_col]: # get strongest top-n
-            cell = row[column]
-            symbol, rs_value = extract_symbol_quantity(cell)
-            if symbol not in top_n_dict:
-                top_n_dict[symbol] = []
-            top_n_dict[symbol].append(date)
+        len_col = len(df.columns)
+        for _, row in df.iterrows():
+            date = row['date']
+            # for column in df.columns[1:n+2]: # get weakest top-n
+            for column in df.columns[len_col - n:len_col]: # get strongest top-n
+                cell = row[column]
+                symbol, rs_value = extract_symbol_quantity(cell)
+                if symbol not in top_n_dict:
+                    top_n_dict[symbol] = []
+                top_n_dict[symbol].append(date)
     return top_n_dict
 
 if __name__ == '__main__':
-    n = 5
+    n = 10
     top_n_dict = get_top_n(n)
     backtest_result_dict = {}
     for symbol, dates in top_n_dict.items():
         backtest_result_dict[symbol] = run_backtest(symbol, dates).to_json()
 
-    with open('backtest_result.json', 'w') as fp:
-        json.dump(backtest_result_dict, fp)
+    
+    # with open('backtest_result.json', 'w') as fp:
+    #     json.dump(backtest_result_dict, fp)
