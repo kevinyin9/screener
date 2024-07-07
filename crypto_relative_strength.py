@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from src.downloader import CryptoDownloader
 from datetime import datetime, timedelta
 import telebot
+import matplotlib.pyplot as plt
 
 TOKEN = "5943012661:AAG2_LfS73WDWz67fiffSzm1B7uoJ1jQOwk"  # tw_future_bot
 # CHAT_ID = -833718924 # 母牛飛上天
@@ -111,7 +112,19 @@ def calc_rs(symbol: str, time_interval, days, start_date: str, end_date: str):
 
     return {"crypto": symbol, "rs_score_list": rs_score_list}
 
-def main(history, start_date, end_date, no_download):
+def send_dataframe_as_image(df):
+    columns = ['1h', '4h', '8h', '24h']
+    row_header = [str(i) for i in range(1, 11)]
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.axis('tight')
+    ax.axis('off')
+    table = ax.table(cellText=df.values, colLabels=columns, rowLabels=row_header, cellLoc='center', loc='center')
+    plt.savefig('table.png', bbox_inches='tight', dpi=300)
+
+    with open('table.png', 'rb') as f:
+        bot.send_photo(CHAT_ID, photo=f)
+
+def main(history, start_date, end_date, no_download, exclude_symbols=None, send_msg=False):
     if history:
         start_date = datetime.strptime(start_date, "%Y-%m-%d")
         end_date = datetime.strptime(end_date, "%Y-%m-%d")
@@ -127,8 +140,8 @@ def main(history, start_date, end_date, no_download):
     # all_cryptos = crypto_downloader.get_volume_rank()
     
     # remove specfic symbols in all_cryptos
-    if ini["Base"]["exclude_symbols"]:
-        exclude_symbols = ini["Base"]["exclude_symbols"].split(",")
+    if exclude_symbols:
+        exclude_symbols = exclude_symbols.split(",")
         all_cryptos = [x for x in all_cryptos if x not in exclude_symbols] #and x.find('USDT') != -1]
 
     time_interval_to_days = {
@@ -138,7 +151,9 @@ def main(history, start_date, end_date, no_download):
         "24h": 20 # 20 bars 
     }
 
+    msg = ""
     for time_interval, days in time_interval_to_days.items():
+        msg += time_interval + '\n'
         with ThreadPoolExecutor(max_workers=20) as executor:
             future_tasks = [executor.submit(calc_rs, crypto, time_interval, days, start_date, end_date) for crypto in all_cryptos]
             results = [future.result() for future in as_completed(future_tasks)]
@@ -171,10 +186,14 @@ def main(history, start_date, end_date, no_download):
             df_list.append(row)
             i += 1
             current_date += timedelta(days=1)
+            if send_msg:
+                for crypto in list(sorted_values.keys())[-10:]:
+                    msg += '{:<10} {:<6}\n'.format(crypto[:crypto.find('USDT')], round(sorted_values[crypto]))
         df = pd.DataFrame(df_list)
         df.to_csv(f'rs_value_{time_interval}.csv')
-    # msg = ""
-    # bot.send_message(CHAT_ID, msg)
+
+    if send_msg:
+        bot.send_message(CHAT_ID, msg)
 
 if __name__ == '__main__':
     ini = config.Config()
@@ -185,5 +204,6 @@ if __name__ == '__main__':
     start_date = ini["Base"]["start_date"]
     end_date = ini["Base"]["end_date"]
     no_download = ini["Base"].getboolean("no_download")
+    exclude_symbols = ini["Base"]["exclude_symbols"]
         
-    main(history, start_date, end_date, no_download)
+    main(history, start_date, end_date, no_download, exclude_symbols, True)

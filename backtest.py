@@ -14,13 +14,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
 
-from strategy_long import long_atr_tp, long_bband_tp
+from strategy_long import long_atr_tp, long_bband_tp, long_big_red
 from strategy_short import short_atr_tp, short_bband_tp
 
-def run_backtest(symbol, dates):
-    if symbol == '1INCHUSDT' or symbol == 'GMXUSDT' or symbol == 'USTCUSDT':
-        return pd.DataFrame()
-    
+def run_backtest(symbol, dates):    
     filename = f'./data/UPERP/1h/{symbol}_UPERP_1h.csv'
     if not os.path.isfile(filename):
         print('{symbol} csv not found')
@@ -31,6 +28,7 @@ def run_backtest(symbol, dates):
 
     df['date'] = df['datetime'].dt.date # format=2024/05/04
     date_list = pd.to_datetime(dates).date
+    df = df[df['date'] >= date_list[0]]
 
     # pd.to_datetime(dates)       => format=2024/05/04 12:00:00
     # pd.to_datetime(dates).date  => format=2024/05/04
@@ -42,10 +40,11 @@ def run_backtest(symbol, dates):
     # df = short_atr_tp(df)
     # df = short_bband_tp(df)
     # df = long_bband_tp(df) # 40.48%, 2.8
-    df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
+    # df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
+    df = long_big_red(df)
     
     # 计算累计回报
-    df['cumulative_strategy_return'] = (1 + df['strategy_return']).cumprod()
+    # df['cumulative_strategy_return'] = (1 + df['strategy_return']).cumprod()
 
     # 绘制回报曲线
     # print(df[['datetime','close','signal','position', 'take_profit', 'stop_loss', 'upper_band','daily_return','strategy_return']].to_string())
@@ -66,6 +65,7 @@ def run_backtest(symbol, dates):
     # print(f'Annualized Return: {annualized_return:.2%}')
     # print(f'Annualized Volatility: {annualized_volatility:.2%}')
     # print(f'Sharpe Ratio: {sharpe_ratio:.2f}')
+    # df.to_csv(f"{symbol}.csv")
     return df
 
 def get_top_n(n):
@@ -85,15 +85,16 @@ def get_top_n(n):
                 cell = row[column]
                 symbol, rs_value = extract_symbol_quantity(cell)
                 if symbol not in top_n_dict:
-                    top_n_dict[symbol] = []
-                top_n_dict[symbol].append(date)
+                    top_n_dict[symbol] = set() # prevent duplicate date
+                top_n_dict[symbol].add(date)
     return top_n_dict
 
 if __name__ == '__main__':
-    n = 10
+    n = 5
     top_n_dict = get_top_n(n)
     backtest_result_dict = {}
     for symbol, dates in top_n_dict.items():
+        dates = sorted(list(dates)) # convert set to list
         backtest_result_dict[symbol] = run_backtest(symbol, dates).to_json()
 
     with open('backtest_result.json', 'w') as fp:
