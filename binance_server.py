@@ -1,43 +1,33 @@
-# 1. screener cal: 1h, 4h. duration=5days.
-# 5days / 4h = 30 kbars.
-
-# 2. 1h + bollinger band, select top-N pairs.
-
-# 3. stop loss: ATR
-
-
-# another
-# - -> +
+import asyncio
 import traceback
 import telebot
-
-TOKEN = "5943012661:AAG2_LfS73WDWz67fiffSzm1B7uoJ1jQOwk"  # tw_future_bot
-CHAT_ID = -833718924
-bot = telebot.TeleBot(TOKEN)
-
 import config
 import json
 import time
+import math
 import pandas as pd
-import matplotlib.pyplot as plt
 import os.path
 import websocket
 import json
 import requests
-import numpy as np
+import talib
 from threading import Thread
 from datetime import datetime
 
 from strategy_long import long_atr_tp, long_bband_tp
 from strategy_short import short_atr_tp, short_bband_tp
 import crypto_relative_strength
+from pluto.exchange import BinanceExchange
+from utils import setup_logger
 
-# def run_strategy(symbol, dates):
-#     df = pd.read_csv(filename) # datetime,open,high,low,close,volume
-
-#     df['can_entry'] = 1
-#     df.reset_index(drop=True, inplace=True)
-#     df = long_atr_tp(df)
+logger_path = f".\\log\\log.txt"
+logger = setup_logger(name=__name__,
+                      file_dir=logger_path,
+                      is_file_handled=True)
+    
+TOKEN = "5943012661:AAG2_LfS73WDWz67fiffSzm1B7uoJ1jQOwk"  # tw_future_bot
+CHAT_ID = -833718924
+bot = telebot.TeleBot(TOKEN)
 
 class BinanceServer:
     
@@ -46,12 +36,20 @@ class BinanceServer:
         self.fetch_white_list_flag = False
         self.alert_list = {}
         self.current_subscriptions = set()
-        self.new_whitelist_flag = False
+        self.new_whitelist_flag = False # if has new whitelist, update websocket subscription.
         self.base_url = "http://43.207.214.219"
+        self.position = {}
+        self.precision_map = {} # price precision and qty precision
+        self.margin_per_trade = 50
 
         os.makedirs('data', exist_ok=True)
         os.makedirs('data/UPERP', exist_ok=True)
         os.makedirs('data/UPERP/1h', exist_ok=True)
+        
+        self.binance_exchange = BinanceExchange(api_key="tnXg5o95Zu8wrpaRdy7xslZ9qWiR7Esb3DX4GAPpQZn1tg9Z9P2mNtiK6H4ldT87",
+                                          secret="PAkEQ0qEr8khxLjEyB5oZdUHwhmqCEgrqp9DXoReBRt8l2MzTRtOZvo05SGHdeZ2")
+        
+        logger.info("Current balance: ", asyncio.run(self.binanceExchange.get_balance()))
 
     def get_top_n(self, n):
         df = pd.read_csv('rs_value.csv', index_col=0)
@@ -73,15 +71,6 @@ class BinanceServer:
                     top_n_dict[symbol] = []
                 top_n_dict[symbol].append(date)
         return top_n_dict
-
-
-    # Function to calculate Bollinger Bands
-    def calculate_bollinger_bands(self, df, window=20, num_std_dev=2):
-        df['SMA'] = df['close'].rolling(window=window).mean()
-        df['STD'] = df['close'].rolling(window=window).std()
-        df['Upper Band'] = df['SMA'] + (df['STD'] * num_std_dev)
-        df['Lower Band'] = df['SMA'] - (df['STD'] * num_std_dev)
-        return df
 
     # Function to fetch kline data from Binance
     def fetch_klines(self, symbol, interval, start_time=None, end_time=None):
@@ -131,13 +120,13 @@ class BinanceServer:
             else:
                 last_timestamp_ms = None
             
-            df_new = self.fetch_klines(symbol, "1h", start_time=last_timestamp_ms)
+            # df_new = self.fetch_klines(symbol, "1h", start_time=last_timestamp_ms)
             # print(df_new)
             # print('df_new')
-            df_updated = pd.concat([df_local, df_new])
+            # df_updated = pd.concat([df_local, df_new])
             # df_updated = df_updated.tail(20)  # Keep only the latest 20 rows
-            self.save_local_data(symbol, df_updated)
-            self.data_in_memory[symbol] = df_updated
+            # self.save_local_data(symbol, df_updated)
+            # self.data_in_memory[symbol] = df_updated
             # print(data_in_memory[symbol])
             print(f"Updated {symbol} kline data")
 
@@ -167,27 +156,22 @@ class BinanceServer:
                     df_updated = pd.concat([self.data_in_memory[symbol], df])
                 # df_updated = df_updated.tail(20)  # Keep only the latest 20 rows
                 # print(df_updated)
-                df_updated = self.calculate_bollinger_bands(df_updated)
+                df_updated = long_bband_tp(df_updated[-25:])
+                signal = df_updated['signal'].iloc[-1]
+                if signal != 0:
+                    close_price = round(df['close'].iloc[-1], self.precision_map[symbol]['price_presicion'])
+                    qty = round(self.margin_per_trade / close_price, self.precision_map[symbol]['qty_presicion'])
+                    if signal == 1:
+                        order = asyncio.run(self.binance_exchange.place_order(symbol, "LIMIT", "LONG", "BUY", close_price, qty))
+                        logger.info(f"create new order: {order}")
+                    elif signal == -1:
+                        order = asyncio.run(self.binance_exchange.place_order(symbol, "LIMIT", "LONG", "SELL", close_price, qty))
+                        logger.info(f"create new order: {order}")
+                    
                 # print(df_updated)
                 last_row = df_updated.iloc[-1]
                 if last_row.close < last_row['Lower Band'] and self.alert_list[symbol] == False:
                     self.alert_list[symbol] = True
-                    requests.post(f"{self.base_url}/web_hook", data={
-                        "strategy": "Reletive Strength - Long",
-                        "ticker": f"{symbol.upper()}.P",
-                        "price": last_row.close,
-                        "action": "open long",
-                        "leverage": 1,
-                        "margin": 15,
-                    })
-                    print("WEBHOOK POST:", {
-                        "strategy": "Reletive Strength - Long",
-                        "ticker": f"{symbol.upper()}.P",
-                        "price": last_row.close,
-                        "action": "open long",
-                        "leverage": 1,
-                        "margin": 15,
-                    })
                     bot.send_message(CHAT_ID, f"{symbol} touches lower band.")
                 # save_local_data(symbol, df_updated)
                 # print(df.tail(2))
@@ -204,6 +188,24 @@ class BinanceServer:
 
     def on_open(self, ws):
         print("Opened connection")
+
+    def get_precision(self, symbols):
+        response = requests.get('https://fapi.binance.com/fapi/v1/exchangeInfo')
+        # Check if the request was successful (status code 200)
+        if response.status_code == 200:
+            # Parse and print the response
+            data = response.json()
+            for item in data['symbols']:
+                if item['symbol'] in symbols:
+                    self.precision_map[symbol] = {}
+                    for filter in item['filters']:
+                        if(filter['filterType'] == 'PRICE_FILTER'):
+                            self.precision_map[symbol]['price_precision'] = math.log(filter['tickSize'], 10)
+                        if(filter['filterType'] == 'MARKET_LOT_SIZE'):
+                            self.precision_map[symbol]['qty_precision'] = math.log(filter['stepSize'], 10)
+                    logger.info(f'{symbol} price precision: {self.precision_map[symbol]['price_precision']}, qty precision: {self.precision_map[symbol]['qty_precision']}')
+        else:
+            print(f"Error: {response.status_code} - {response.text}")
 
     # Get all symbols from Binance
     def get_all_symbols(self):
@@ -240,11 +242,20 @@ class BinanceServer:
                     "params": list(pairs_to_unsubscribe),
                     "id": 312
                 }))
-
+                
+                time.sleep(1)
+                
                 ws.send(json.dumps({
                     "method": "SUBSCRIBE",
                     "params": list(pairs_to_subscribe),
                     "id": 1
+                }))
+                
+                time.sleep(1)
+                
+                ws.send(json.dumps({
+                    "method": "LIST_SUBSCRIPTIONS",
+                    "id": 3
                 }))
                 
                 # Update the current subscriptions
@@ -275,10 +286,13 @@ class BinanceServer:
         end_date = ini["Base"]["end_date"]
         no_download = ini["Base"].getboolean("no_download")
         exclude_symbols = ini["Base"]["exclude_symbols"]
+        
+        first_update_whitelist = True
 
         while True:
             now = datetime.now()
-            if now.minute == 52 and now.second < 30:
+            if first_update_whitelist or (now.hour % 8 == 0 and now.minute == 0 and now.second < 3):
+                first_update_whitelist = False
                 tmp = set()
                 crypto_relative_strength.main(False, start_date, end_date, no_download, exclude_symbols, send_msg=True)
                 
@@ -289,16 +303,19 @@ class BinanceServer:
                     for _, row in df.iterrows():
                         date = row['date']
                         # for column in df.columns[1:n+2]: # get weakest top-n
-                        for column in df.columns[len_col - 10:len_col]: # get strongest top-n
+                        for column in df.columns[len_col - 5:len_col]: # get strongest top-n
                             cell = row[column]
                             symbol, rs_value = extract_symbol_quantity(cell)
+                            if rs_value == 0:
+                                continue
                             tmp.add(symbol)
                 
                 self.whitelist = list(tmp)
+                self.get_precision(self.whitelist)
                 print(f"whitelist: {self.whitelist}")
-                self.data_in_memory = {symbol: None for symbol in self.whitelist}
+                self.data_in_memory = {symbol for symbol in self.whitelist}
                 bot.send_message(CHAT_ID, f"whitelist: {self.whitelist}")
-                self.update_local_data()
+                # self.update_local_data()
                 self.fetch_white_list_flag = True
                 self.new_whitelist_flag = True
             time.sleep(0.5)

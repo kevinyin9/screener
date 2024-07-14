@@ -17,8 +17,8 @@ def short_atr_tp(df):
     for i in range(1, len(df)):
         if df['close'].iloc[i] > df['upper_band'].iloc[i] and df.at[df.index[i], 'can_entry'] == 1 and df['position'].iloc[i-1] == 0:
             df.at[df.index[i], 'signal'] = -1  # 開空頭倉位
-            df.at[df.index[i], 'take_profit'] = df['close'].iloc[i] - 2 * df['ATR'].iloc[i]  # 設置止盈價格
-            df.at[df.index[i], 'stop_loss'] = df['close'].iloc[i] + df['ATR'].iloc[i]  # 設置止损價格
+            df.at[df.index[i], 'take_profit'] = df['close'].iloc[i] - 6 * df['ATR'].iloc[i]  # 設置止盈價格
+            df.at[df.index[i], 'stop_loss'] = df['close'].iloc[i] + 2 * df['ATR'].iloc[i]  # 設置止损價格
         elif df['position'].iloc[i-1] == -1 and df['close'].iloc[i] < df['lower_band'].iloc[i]:
             df.at[df.index[i], 'signal'] = 1  # 平仓
         else:
@@ -57,7 +57,7 @@ def short_bband_tp(df):
     for i in range(1, len(df)):
         if df['close'].iloc[i] > df['upper_band'].iloc[i] and df.at[df.index[i], 'can_entry'] == 1 and df['position'].iloc[i-1] == 0:
             df.at[df.index[i], 'signal'] = -1  # 開空頭倉位
-            df.at[df.index[i], 'stop_loss'] = df['close'].iloc[i] + df['ATR'].iloc[i]  # 設置止损價格
+            df.at[df.index[i], 'stop_loss'] = df['close'].iloc[i] + 2 * df['ATR'].iloc[i]  # 設置止损價格
         elif df['position'].iloc[i-1] == -1 and df['close'].iloc[i] < df['lower_band'].iloc[i]:
             df.at[df.index[i], 'signal'] = 1  # 平仓
         else:
