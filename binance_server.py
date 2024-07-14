@@ -49,7 +49,7 @@ class BinanceServer:
         self.binance_exchange = BinanceExchange(api_key="tnXg5o95Zu8wrpaRdy7xslZ9qWiR7Esb3DX4GAPpQZn1tg9Z9P2mNtiK6H4ldT87",
                                           secret="PAkEQ0qEr8khxLjEyB5oZdUHwhmqCEgrqp9DXoReBRt8l2MzTRtOZvo05SGHdeZ2")
         
-        logger.info("Current balance: ", asyncio.run(self.binanceExchange.get_balance()))
+        logger.info("Current balance: ", asyncio.run(self.binance_exchange.get_balance()))
 
     def get_top_n(self, n):
         df = pd.read_csv('rs_value.csv', index_col=0)
@@ -203,7 +203,7 @@ class BinanceServer:
                             self.precision_map[symbol]['price_precision'] = math.log(filter['tickSize'], 10)
                         if(filter['filterType'] == 'MARKET_LOT_SIZE'):
                             self.precision_map[symbol]['qty_precision'] = math.log(filter['stepSize'], 10)
-                    logger.info(f'{symbol} price precision: {self.precision_map[symbol]['price_precision']}, qty precision: {self.precision_map[symbol]['qty_precision']}')
+                    logger.info(f"{symbol} price precision: {self.precision_map[symbol]['price_precision']}, qty precision: {self.precision_map[symbol]['qty_precision']}")
         else:
             print(f"Error: {response.status_code} - {response.text}")
 
