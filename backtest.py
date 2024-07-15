@@ -14,7 +14,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
 
-from strategy_long import long_atr_tp, long_bband_tp, long_big_red
+from strategy_long import long_atr_tp, long_bband_tp_backtest, long_big_red
 from strategy_short import short_atr_tp, short_bband_tp
 
 def run_backtest(symbol, dates):    
@@ -39,9 +39,9 @@ def run_backtest(symbol, dates):
 
     # df = short_atr_tp(df)
     # df = short_bband_tp(df)
-    # df = long_bband_tp(df) # 40.48%, 2.8
+    df = long_bband_tp_backtest(df) # 40.48%, 2.8
     # df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
-    df = long_big_red(df)
+    # df = long_big_red(df)
     
     # 计算累计回报
     # df['cumulative_strategy_return'] = (1 + df['strategy_return']).cumprod()

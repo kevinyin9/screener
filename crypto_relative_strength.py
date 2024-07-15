@@ -92,7 +92,7 @@ def calc_rs(symbol: str, time_interval, days, start_date: str, end_date: str):
             moving_average_45 = df_tmp['SMA_45'].values[-i]
             moving_average_60 = df_tmp['SMA_60'].values[-i]
             if np.isnan(moving_average_30) or np.isnan(moving_average_45) or np.isnan(moving_average_60):
-                print(f"{symbol} {current_date} is nan")
+                # print(f"{symbol} {current_date} is nan")
                 rs_score = 0
                 break
             weight = (((current_close - moving_average_30) + (current_close - moving_average_45) + (current_close - moving_average_60)) * (((bars - i) * days / bars) + 1) + (moving_average_30 - moving_average_45) + (moving_average_30 - moving_average_60) + (moving_average_45 - moving_average_60)) / moving_average_60
@@ -158,7 +158,7 @@ def main(history, start_date, end_date, no_download, exclude_symbols=None, send_
             future_tasks = [executor.submit(calc_rs, crypto, time_interval, days, start_date, end_date) for crypto in all_cryptos]
             results = [future.result() for future in as_completed(future_tasks)]
 
-        print(results)
+        # print(results)
         df_list = []
         failed_targets = []     # Failed to download data or error happened
         target_score = {}
@@ -179,10 +179,10 @@ def main(history, start_date, end_date, no_download, exclude_symbols=None, send_
 
             values = {symbol: target_score[symbol][i] for symbol in target_score}
             sorted_values = {k: v for k, v in sorted(values.items(), key=lambda item: item[1])}
-            print(current_date, sorted_values)
+            # print(current_date, sorted_values)
             for idx, v in enumerate(sorted_values.keys()):
                 row[idx] = f"{v}_{str(sorted_values[v])}"
-            print("row: ", row)
+            # print("row: ", row)
             df_list.append(row)
             i += 1
             current_date += timedelta(days=1)
