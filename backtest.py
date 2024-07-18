@@ -10,6 +10,7 @@
 # - -> +
 
 import json
+import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import os.path
@@ -28,8 +29,9 @@ def run_backtest(symbol, dates):
 
     df['date'] = df['datetime'].dt.date # format=2024/05/04
     date_list = pd.to_datetime(dates).date
+    # print(date_list[0])
     df = df[df['date'] >= date_list[0]]
-
+    # print(symbol, df)
     # pd.to_datetime(dates)       => format=2024/05/04 12:00:00
     # pd.to_datetime(dates).date  => format=2024/05/04
     df['can_entry'] = 0
@@ -39,9 +41,13 @@ def run_backtest(symbol, dates):
 
     # df = short_atr_tp(df)
     # df = short_bband_tp(df)
-    df = long_bband_tp_backtest(df) # 40.48%, 2.8
-    # df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
-    # df = long_big_red(df)
+    # df = long_bband_tp_backtest(df) # 40.48%, 2.8
+    df = long_atr_tp(df) # 42.86%, 6.3 因為都沒出場
+    # df = long_big_red(df, symbol)
+    # if symbol == 'CHRUSDT':
+    #     print(df.to_string())
+    #     df.to_csv('./CHRUSDT.csv')
+    #     raise
     
     # 计算累计回报
     # df['cumulative_strategy_return'] = (1 + df['strategy_return']).cumprod()
@@ -73,8 +79,8 @@ def get_top_n(n):
         symbol, rs_value = cell_value.split('_')
         return symbol, float(rs_value)
 
-    top_n_dict = {}
-    for time_interval in ['1h', '4h', '8h', '24h']:
+    n_dict = {}
+    for time_interval in ['4h', '8h', '24h']:
         df = pd.read_csv(f'rs_value_{time_interval}.csv', index_col=0)
 
         len_col = len(df.columns)
@@ -84,14 +90,40 @@ def get_top_n(n):
             for column in df.columns[len_col - n:len_col]: # get strongest top-n
                 cell = row[column]
                 symbol, rs_value = extract_symbol_quantity(cell)
-                if symbol not in top_n_dict:
-                    top_n_dict[symbol] = set() # prevent duplicate date
-                top_n_dict[symbol].add(date)
-    return top_n_dict
+                if rs_value <= 0: # 0 means no data
+                    continue
+                if symbol not in n_dict:
+                    n_dict[symbol] = set() # prevent duplicate date
+                n_dict[symbol].add(date)
+    return n_dict
+
+def get_weakest_n(n):
+    def extract_symbol_quantity(cell_value):
+        symbol, rs_value = cell_value.split('_')
+        return symbol, float(rs_value)
+
+    n_dict = {}
+    for time_interval in ['4h']:
+        df = pd.read_csv(f'rs_value_{time_interval}.csv', index_col=0)
+
+        len_col = len(df.columns)
+        for _, row in df.iterrows():
+            date = row['date']
+            for column in df.columns[1:n+1]: # get weakest top-n
+                cell = row[column]
+                symbol, rs_value = extract_symbol_quantity(cell)
+                if rs_value == 0: # 0 means no data
+                    continue
+                if symbol not in n_dict:
+                    n_dict[symbol] = set() # prevent duplicate date
+                n_dict[symbol].add(date)
+    return n_dict
 
 if __name__ == '__main__':
-    n = 5
+    start = time.time()
+    n = 15
     top_n_dict = get_top_n(n)
+    # weakest_symbol = get_weakest_n(1)
     backtest_result_dict = {}
     for symbol, dates in top_n_dict.items():
         dates = sorted(list(dates)) # convert set to list
@@ -99,3 +131,5 @@ if __name__ == '__main__':
 
     with open('backtest_result.json', 'w') as fp:
         json.dump(backtest_result_dict, fp)
+    
+    print(f"Time Cost: {time.time() - start}")
