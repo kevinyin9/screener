@@ -108,22 +108,20 @@ def long_bband_tp(df, position):
     df = df.assign(stop_loss = np.nan)
 
     # 生成交易信号和止损条件
-    for i in range(1, len(df)):
-        # 沒爆量條件，碰下軌
-        # if df['close'].iloc[i] < df['lower_band'].iloc[i] and df.at[df.index[i], 'can_entry'] == 1 and df['position'].iloc[i-1] == 0:
+    i = len(df) - 1
         
-        # 爆量，碰下軌
-        if df['volume'].iloc[i] > df['volume'].iloc[i-1] * 2 and df['close'].iloc[i] < df['lower_band'].iloc[i] and df.loc[df.index[i], 'can_entry'] == 1 and position == 0:
-            df.loc[df.index[i], 'signal'] = 1  # 開多頭倉位
-            df.loc[df.index[i], 'stop_loss'] = df['close'].iloc[i] - 2 * df['ATR'].iloc[i]  # 設置止损價格
-        elif position == 1 and df['close'].iloc[i] > df['upper_band'].iloc[i]:
-            df.loc[df.index[i], 'signal'] = -1  # 平仓
-        else:
-            df.loc[df.index[i], 'stop_loss'] = df['stop_loss'].iloc[i-1]
+    # 爆量，碰下軌
+    if df['volume'].iloc[i] > df['volume'].iloc[i-1] * 2 and df['close'].iloc[i] < df['lower_band'].iloc[i] and df['can_entry'].iloc[i] == 1 and position == 0:
+        df['signal'].iloc[i] = 1  # 開多頭倉位
+        df['stop_loss'].iloc[i] = df['close'].iloc[i] - 2 * df['ATR'].iloc[i]  # 設置止损價格
+    elif position == 1 and df['close'].iloc[i] > df['upper_band'].iloc[i]:
+        df['signal'].iloc[i] = -1
+    else:
+        df['stop_loss'].iloc[i] = df['stop_loss'].iloc[i-1]
 
-        # 止損
-        if position == 1 and df['low'].iloc[i] < df['stop_loss'].iloc[i-1]:
-            df.loc[df.index[i], 'signal'] = -1  # 平仓
+    # 止損
+    if position == 1 and df['low'].iloc[i] < df['stop_loss'].iloc[i-1]:
+        df['signal'].iloc[i] = -1 # 平仓
             
     return df
 
