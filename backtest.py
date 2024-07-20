@@ -121,7 +121,7 @@ def get_weakest_n(n):
 
 if __name__ == '__main__':
     start = time.time()
-    n = 15
+    n = 5
     top_n_dict = get_top_n(n)
     # weakest_symbol = get_weakest_n(1)
     backtest_result_dict = {}
