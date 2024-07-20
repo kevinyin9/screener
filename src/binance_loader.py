@@ -70,17 +70,17 @@ class BinanceLoader:
             symbol_details = client.fetch_markets()
             symbols = [i["symbol"].replace('/', '').split(':')[0] for i in symbol_details]
             
-            if symbol not in symbols:
-                print(f"{symbol} not in current market.")
-                return
+            for s in symbol:
+                if s not in symbols:
+                    print(f"{s} not in current market.")
+                    return
 
             symbol_onboard_date = datetime.fromtimestamp(
                 int(symbol_details[0]["info"]["onboardDate"]) / 1000 - 1000
             )
             start_dt = symbol_onboard_date if symbol_onboard_date > SINCE else SINCE
-            # print(f"Getting data: {start_dt}, {symbol}, {timeframe}")
-            # print(symbol)
-            paginate(client, symbol, timeframe, data_path, pair_type, start_dt, TO)
+            # print(f"Getting data: {start_dt}, {s}, {timeframe}")
+            paginate(client, s, timeframe, data_path, pair_type, start_dt, TO)
         # print("Saved data.")
 
     def uperp_data_import(self, timeframe, training_pair_list=None):
@@ -124,11 +124,11 @@ class BinanceLoader:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="symbol and timeframe")
     parser.add_argument("--training_pair_list", nargs='+', help="Symbol or all")
-    parser.add_argument("-t", help="Timeframe (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d)")
+    # parser.add_argument("-t", help="Timeframe (1m, 5m, 15m, 30m, 1h, 2h, 4h, 1d)")
     parser.add_argument(
         "--type", help="SPOT, UPERP, CPERP"
     )
     args = parser.parse_args()
 
     binance_loader = BinanceLoader()
-    binance_loader.download(args.t, args.type, args.training_pair_list)
+    binance_loader.download(args.type, args.training_pair_list)
