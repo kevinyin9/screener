@@ -47,7 +47,7 @@ class BinanceServer:
         self.base_url = "http://43.207.214.219"
         self.position = {}
         self.precision_map = {} # price precision and qty precision
-        self.margin_per_trade = 100.0 # float
+        self.margin_per_trade = 500.0 # float
         self.strategy_list = {long_bband_tp}
 
         os.makedirs('data', exist_ok=True)
@@ -107,12 +107,6 @@ class BinanceServer:
             df = pd.DataFrame(columns=['datetime', 'open', 'high', 'low', 'close', 'volume'])
         return df
 
-    # Function to save local kline data
-    def save_local_data(self, symbol, df):
-        print(f"{symbol} save_local_data")
-        filepath = os.path.join("data/UPERP/1h/", f"{symbol}_UPERP_1h.csv")
-        df.to_csv(filepath, index=False)
-
     # Update kline data and load into memory
     def update_kline_data(self):
         def get_kline(symbol):
@@ -129,9 +123,6 @@ class BinanceServer:
 
         while self.fetch_white_list_flag == False:
             continue
-    
-        for symbol in self.whitelist:
-            self.data_in_memory[symbol] = self.load_local_data(symbol)
 
         update_kline_flag = False # 避免get kline兩次，whitelist全部update可能不到一秒就完成了
         while self.fetch_white_list_flag:
@@ -210,27 +201,26 @@ class BinanceServer:
         # print(df_updated)
         for strategy in self.strategy_list:
             df_updated = strategy(df_updated[-25:], self.position[symbol])
-            logger.debug(f"{symbol} {df_updated.iloc[-1]}")
+            logger.debug(f"{symbol} {df_updated.iloc[-5:]}")
             signal = df_updated['signal'].iloc[-1]
             if signal != 0:
                 logger.info(f"{symbol}: {signal}, position: {self.position[symbol]}, close: {df_updated['close'].iloc[-1]}")
                 close_price = round(df_updated['close'].iloc[-1], self.precision_map[symbol]['price_precision'])
-                logger.info(f"qty: {self.margin_per_trade / close_price}")
-                qty = round(self.margin_per_trade / close_price, self.precision_map[symbol]['qty_precision'])
-                logger.info(f"after round: close: {close_price}, qty: {qty}")
                 if self.position[symbol] == 0 and signal == 1:
+                    qty = round(self.margin_per_trade / close_price, self.precision_map[symbol]['qty_precision'])
                     logger.info(f"{symbol} LIMIT LONG BUY {qty}@{close_price}")
-                    order = asyncio.run(self.binance_exchange.place_order(symbol, "LIMIT", "LONG", "BUY", close_price, qty))
+                    order = asyncio.run(self.binance_exchange.place_order(symbol, "MARKET", "LONG", "BUY", "", qty))
                     logger.info(f"create new order: {order}")
                     bot.send_message(CHAT_ID, f"{strategy.__name__}: {symbol} buy long order.")
-                    self.position[symbol] == 1
+                    self.position[symbol] = qty
                     # TODO: filled user ws, change self.position
-                elif self.position[symbol] == 1 and signal == -1:
+                elif self.position[symbol] > 0 and signal == -1:
+                    qty = self.position[symbol]
                     logger.info(f"{symbol} LIMIT LONG SELL {qty}@{close_price}")
-                    order = asyncio.run(self.binance_exchange.place_order(symbol, "LIMIT", "LONG", "SELL", close_price, qty))
+                    order = asyncio.run(self.binance_exchange.place_order(symbol, "MARKET", "LONG", "SELL", "", qty))
                     logger.info(f"create new order: {order}")
                     bot.send_message(CHAT_ID, f"{strategy.__name__}: {symbol} sell long order.")
-                    self.position[symbol] == -1
+                    self.position[symbol] = 0
 
     # def on_error(self, ws, error):
     #     print("Error: ", error)
@@ -355,9 +345,12 @@ class BinanceServer:
                             tmp.add(symbol)
                             if symbol not in self.position: # 如果position已經有這個symbol，有可能已經正在持有倉位，就不可修改
                                 self.position[symbol] = 0
+                            if symbol not in self.data_in_memory:
+                                self.data_in_memory[symbol] = self.load_local_data(symbol)
                             asyncio.run(self.binance_exchange.set_leverage(symbol, 1))
                 
-                self.whitelist = list(tmp)
+                self.whitelist = list(tmp | set(self.position.keys()))
+                print(self.whitelist)
                 self.get_precision(self.whitelist)
                 print(f"whitelist: {self.whitelist}")
                 bot.send_message(CHAT_ID, f"whitelist: {self.whitelist}")

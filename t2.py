@@ -49,7 +49,7 @@ class BinanceServer:
         # order = asyncio.run(self.binance_exchange.place_stop_loss_market_order('DARUSDT', "SELL", "LONG", "9150", "0.1554"))
         # print(order)
         
-        # cancel_order = asyncio.run(self.binance_exchange.cancel_order('DARUSDT', '1910544972'))
+        # cancel_order = asyncio.run(self.binance_exchange.cancel_order('DARUSDT', '1964982650'))
         # print(cancel_order)
         
         # trade_list = asyncio.run(self.binance_exchange.fetch_trade_list('1000SATSUSDT'))

@@ -1,5 +1,15 @@
 # Screener
 
+# 啟動下單系統
+```
+python3 binance_server.py
+```
+啟動兩個Thread
+    第1個Thread: 每8小時更新一次白名單，(白名單就是4h, 8h, 24h各取top N個標的, 目前N = 5)
+    第2個Thread: 每1小時整點會抓每一個標的的最新K棒，丟進策略判斷是否產生進出場訊號 -> 下單 -> 記錄倉位
+
+
+
 下載美股和加密貨幣的歷史數據並透過自己的策略去找到強勢標的
 
 The purpose of this project is to download historical data for US stocks and cryptocurrencies, and use different strategies to identify strong performing assets.
